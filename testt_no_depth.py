@@ -11,6 +11,7 @@ from threading import Thread
 import CvCmdApi
 
 import matplotlib.pyplot as plt
+from scipy.signal import savgol_filter
 
 def spherical_to_cartesian(r, phi, theta):
     phi = ((phi + np.pi) % (2*np.pi)) - np.pi
@@ -188,9 +189,9 @@ def call_heartBeat():
 
 model = YOLO("best.pt")
 CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyUSB0')
+np.set_printoptions(precision=2)
 
 pipeline = dai.Pipeline()
-
 
 monoLeft = pipeline.create(dai.node.MonoCamera)
 monoRight = pipeline.create(dai.node.MonoCamera)
@@ -201,6 +202,7 @@ imu = pipeline.create(dai.node.IMU)
 sync = pipeline.create(dai.node.Sync)
 
 color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+color.setFps(60)
 
 xoutGrp = pipeline.create(dai.node.XLinkOut)
 
