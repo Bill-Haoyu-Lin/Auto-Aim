@@ -275,6 +275,7 @@ last = [0,0,0]
 enemy_detected = False
 
 coordinates_3d = [0,0,0]
+Global_xyz = [0,0,0]
 
 angle_record = []
 location_record = []
@@ -330,18 +331,15 @@ while True:
                     
                     theta  = math.atan((center_x - 320)/focal_length_in_pixel)
                     phi = math.atan((center_y - 240)/focal_length_in_pixel_pitch)
-
+                    
                     theta_record.append(theta)
-                    cur_coordination_3d = spherical_to_cartesian(100, theta, phi)
-
                     
                     #roll pitch yaw
                     # Yaw clockwise + 
                     # Pitch down +
-                    Global_xyz = tramform2base(cur_coordination_3d[0],cur_coordination_3d[1],cur_coordination_3d[2],cur_angle)
                     Global_xyz[2]= cur_angle[2]+theta
                     Global_xyz[1]= phi - cur_angle[1]
-                    Global_xyz = (np.array(Global_xyz)+np.array(last))/2
+                    # Global_xyz = (np.array(Global_xyz)+np.array(last))/2
                     #print(Global_xyz[1])
 
                     #print global location for debug
