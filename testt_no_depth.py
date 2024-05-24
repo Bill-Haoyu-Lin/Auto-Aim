@@ -346,7 +346,7 @@ while True:
                     # Global_xyz = (np.array(Global_xyz)+np.array(last))/2
                     target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
 
-                    savgol_filter(target_yaw_record, 5, 2, mode='nearest')
+                    savgol_filter(target_yaw_record, 10, 4, mode='nearest')
                     
                     Global_xyz_filtered[2] = target_yaw_record[-1]
 
