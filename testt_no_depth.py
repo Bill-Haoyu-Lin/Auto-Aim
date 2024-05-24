@@ -44,11 +44,9 @@ def euler_from_quaternion(x, y, z, w):
         #OUTPUT --> i : yaw, j : roll, k : pitch 
         return [roll_x, pitch_y, yaw_z] # in radians
 
-
 def wrap_angle(angle):
     # Wrap angle to range -pi to pi
     return (angle + np.pi) % (2 * np.pi) - np.pi
-
 
 def tramform2base(x,y,z,angles):
     x = x+20 # 200 mm offset from camera to type-c board
@@ -178,13 +176,14 @@ def call_heartBeat():
     global Global_xyz
     global last
     global target_angle
+    global Global_xyz_filtered
     while True:
         if enemy_detected:
             print(target_angle[1])
-            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=0, gimbal_yaw_target=target_angle[2], chassis_speed_x=0, chassis_speed_y=0)
+            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=0, gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
         else:
             print(target_angle[1])
-            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=0, gimbal_yaw_target=last[2], chassis_speed_x=0, chassis_speed_y=0)
+            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=0, gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
         time.sleep(1/500)
 
 model = YOLO("best.pt")
@@ -287,6 +286,9 @@ target_record = []
 
 angle_reached = True
 target_angle = [0,0,0]
+Global_xyz_filtered = [0,0,0]
+
+target_yaw_record = np.empty(1)
 
 thread2 = Thread(target = call_heartBeat,args=())
 thread2.start()
@@ -342,7 +344,11 @@ while True:
                     Global_xyz[2]= cur_angle[2]+theta
                     Global_xyz[1]= phi - cur_angle[1]
                     # Global_xyz = (np.array(Global_xyz)+np.array(last))/2
-                    #print(Global_xyz[1])
+                    target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
+
+                    savgol_filter(target_yaw_record, 5, 2, mode='nearest')
+                    
+                    Global_xyz_filtered[2] = target_yaw_record[-1]
 
                     #print global location for debug
                     location_record.append(Global_xyz[2])
