@@ -11,7 +11,7 @@ from threading import Thread
 import CvCmdApi
 
 import matplotlib.pyplot as plt
-from scipy.signal import savgol_filter
+from scipy import signal
 
 def spherical_to_cartesian(r, phi, theta):
     phi = ((phi + np.pi) % (2*np.pi)) - np.pi
@@ -183,7 +183,7 @@ def call_heartBeat():
             CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz_filtered[1], gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
         else:
             CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz_filtered[1], gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
-        time.sleep(1/500)
+        time.sleep(1/200)
 
 model = YOLO("best.pt")
 CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyUSB0')
@@ -286,7 +286,7 @@ angle_reached = True
 target_angle = [0,0,0]
 Global_xyz_filtered = [0,0,0]
 
-target_yaw_record = np.empty(1)
+target_yaw_record = np.empty(60)
 target_pitch_record = np.empty(1)
 
 thread2 = Thread(target = call_heartBeat,args=())
@@ -323,7 +323,7 @@ while True:
                     frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
                     frame["disparity"] = cv2.circle(frame["disparity"], (int((((4*(center_x+160))/4056)*640)),int(400*(((center_y+30)*4+220)/3040))), 60, (255, 255, 255) , 2)
                     
-                    focal_length_in_pixel = 1280 *1.14* 4.81 / 11.043412
+                    focal_length_in_pixel = 1280 *0.8* 4.81 / 11.043412
                     focal_length_in_pixel_pitch =  1.8*960 * 4.81 / 11.043412
                     
                     theta  = math.atan((center_x - 320)/focal_length_in_pixel)
@@ -335,7 +335,7 @@ while True:
                     #     theta =0
                     angle_rt= angles.copy()
                     cur_angle = np.array(angle_rt) - np.array(angles_default)
-                 
+
 
                     cur_angle[2] = wrap_angle(-cur_angle[2])
                     angle_record.append(cur_angle[1])
@@ -343,15 +343,21 @@ while True:
                     #roll pitch yaw
                     # Yaw clockwise + 
                     # Pitch down +
+                    print("this is",theta)
                     Global_xyz[2]= cur_angle[2]+theta
                     Global_xyz[1]= phi - cur_angle[1]
                     # Global_xyz = (np.array(Global_xyz)+np.array(last))/2
                     target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
                     target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
 
-                    target_yaw_record = savgol_filter(target_yaw_record, 60, 3, mode='nearest',cval=0)
-                    target_pitch_record = savgol_filter(target_pitch_record, 40, 3, mode='nearest')
+                    # target_yaw_record = savgol_filter(target_yaw_record, 40, 3, mode='nearest',cval=0)
+                    # target_pitch_record = signal.savgol_filter(target_pitch_record, 40, 3, mode='nearest')
                     
+                    b,a= signal.ellip(3, 0.05, 40, 0.125)
+                    target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust")
+                    target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
+
+
                     Global_xyz_filtered[2] = target_yaw_record[-1]
                     Global_xyz_filtered[1] = target_pitch_record[-1]-0.08
 
