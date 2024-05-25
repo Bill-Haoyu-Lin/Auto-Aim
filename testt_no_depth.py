@@ -180,9 +180,9 @@ def call_heartBeat():
     while True:
         print(target_angle[1])
         if enemy_detected:
-            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz[1], gimbal_yaw_target=0, chassis_speed_x=0, chassis_speed_y=0)
+            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz_filtered[1], gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
         else:
-            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz[1], gimbal_yaw_target=0, chassis_speed_x=0, chassis_speed_y=0)
+            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz_filtered[1], gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
         time.sleep(1/500)
 
 model = YOLO("best.pt")
@@ -287,6 +287,7 @@ target_angle = [0,0,0]
 Global_xyz_filtered = [0,0,0]
 
 target_yaw_record = np.empty(1)
+target_pitch_record = np.empty(1)
 
 thread2 = Thread(target = call_heartBeat,args=())
 thread2.start()
@@ -322,15 +323,16 @@ while True:
                     frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
                     frame["disparity"] = cv2.circle(frame["disparity"], (int((((4*(center_x+160))/4056)*640)),int(400*(((center_y+30)*4+220)/3040))), 60, (255, 255, 255) , 2)
                     
-                    focal_length_in_pixel = 1280 *1.15* 4.81 / 11.043412
-                    focal_length_in_pixel_pitch =  1.2*960 * 4.81 / 11.043412
+                    focal_length_in_pixel = 1280 *1.14* 4.81 / 11.043412
+                    focal_length_in_pixel_pitch =  1.8*960 * 4.81 / 11.043412
                     
                     theta  = math.atan((center_x - 320)/focal_length_in_pixel)
-                    phi = math.atan((center_y - 240)/focal_length_in_pixel)
+                    phi = math.atan((center_y - 240)/focal_length_in_pixel_pitch)
                     
-                    theta_record.append(theta)
-                    if abs(theta)<0.1:
-                        theta =0
+                    theta_record.append(-phi)
+
+                    # if abs(theta)<0.1:
+                    #     theta =0
                     angle_rt= angles.copy()
                     cur_angle = np.array(angle_rt) - np.array(angles_default)
                  
@@ -345,10 +347,13 @@ while True:
                     Global_xyz[1]= phi - cur_angle[1]
                     # Global_xyz = (np.array(Global_xyz)+np.array(last))/2
                     target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
+                    target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
 
-                    target_yaw_record = savgol_filter(target_yaw_record, 40, 3, mode='nearest')
+                    target_yaw_record = savgol_filter(target_yaw_record, 60, 3, mode='nearest',cval=0)
+                    target_pitch_record = savgol_filter(target_pitch_record, 40, 3, mode='nearest')
                     
                     Global_xyz_filtered[2] = target_yaw_record[-1]
+                    Global_xyz_filtered[1] = target_pitch_record[-1]-0.08
 
                     #print global location for debug
                     location_record.append(Global_xyz[1])
@@ -381,7 +386,7 @@ fig, ax = plt.subplots()
 
 ax.plot(t, angle_record,label='IMU angle')
 ax.plot(t,location_record,label='global angle')
-ax.plot(t,theta_record,label='deltaangle')
+ax.plot(t,theta_record,label='delta angle')
 ax.plot(t,target_record,label='target angle')
 
 
