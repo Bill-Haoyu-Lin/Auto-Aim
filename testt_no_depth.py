@@ -178,17 +178,15 @@ def call_heartBeat():
     global target_angle
     global Global_xyz_filtered
     while True:
+        print(target_angle[1])
         if enemy_detected:
-            print(target_angle[1])
-            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=0, gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
+            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz[1], gimbal_yaw_target=0, chassis_speed_x=0, chassis_speed_y=0)
         else:
-            print(target_angle[1])
-            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=0, gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
+            CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz[1], gimbal_yaw_target=0, chassis_speed_x=0, chassis_speed_y=0)
         time.sleep(1/500)
 
 model = YOLO("best.pt")
 CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyUSB0')
-np.set_printoptions(precision=2)
 
 pipeline = dai.Pipeline()
 
@@ -237,7 +235,7 @@ config.depthThresholds.upperThreshold = 10000
 calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
 config.roi = dai.Rect(topLeft, bottomRight)
 
-imu.enableIMUSensor(dai.IMUSensor.ROTATION_VECTOR, 120)
+imu.enableIMUSensor(dai.IMUSensor.ROTATION_VECTOR, 60)
 imu.setBatchReportThreshold(1)
 imu.setMaxBatchReports(10)
 imu.out.link(xlinkOut.input)
@@ -247,7 +245,7 @@ spatialLocationCalculator.initialConfig.addROI(config)
 
 color.setCamera("color")
 
-sync.setSyncThreshold(timedelta(milliseconds=50))
+sync.setSyncThreshold(timedelta(milliseconds=10))
 
 monoLeft.out.link(stereo.left)
 monoRight.out.link(stereo.right)
@@ -320,24 +318,26 @@ while True:
                     topLeft = dai.Point2f(((4*(center_x-7))/4056), ((((center_y-7)+30)*4+220)/3040))# (960,540))[ 30:510, 160:800]
                     bottomRight = dai.Point2f(((4*(center_x+7))/4056),((((center_y+7)+30)*4+220)/3040))
    
+ 
+                    frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
+                    frame["disparity"] = cv2.circle(frame["disparity"], (int((((4*(center_x+160))/4056)*640)),int(400*(((center_y+30)*4+220)/3040))), 60, (255, 255, 255) , 2)
+                    
+                    focal_length_in_pixel = 1280 *1.15* 4.81 / 11.043412
+                    focal_length_in_pixel_pitch =  1.2*960 * 4.81 / 11.043412
+                    
+                    theta  = math.atan((center_x - 320)/focal_length_in_pixel)
+                    phi = math.atan((center_y - 240)/focal_length_in_pixel)
+                    
+                    theta_record.append(theta)
+                    if abs(theta)<0.1:
+                        theta =0
                     angle_rt= angles.copy()
                     cur_angle = np.array(angle_rt) - np.array(angles_default)
                  
 
                     cur_angle[2] = wrap_angle(-cur_angle[2])
-                    angle_record.append(cur_angle[2])
+                    angle_record.append(cur_angle[1])
 
-                    frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
-                    frame["disparity"] = cv2.circle(frame["disparity"], (int((((4*(center_x+160))/4056)*640)),int(400*(((center_y+30)*4+220)/3040))), 60, (255, 255, 255) , 2)
-                    
-                    focal_length_in_pixel = 2.3* 1280 *0.9* 4.81 / 11.043412
-                    focal_length_in_pixel_pitch =  2.3*960 * 4.81 / 11.043412
-                    
-                    theta  = math.atan((center_x - 320)/focal_length_in_pixel)
-                    phi = math.atan((center_y - 240)/focal_length_in_pixel_pitch)
-                    
-                    theta_record.append(theta)
-                    
                     #roll pitch yaw
                     # Yaw clockwise + 
                     # Pitch down +
@@ -346,14 +346,14 @@ while True:
                     # Global_xyz = (np.array(Global_xyz)+np.array(last))/2
                     target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
 
-                    savgol_filter(target_yaw_record, 10, 4, mode='nearest')
+                    target_yaw_record = savgol_filter(target_yaw_record, 40, 3, mode='nearest')
                     
                     Global_xyz_filtered[2] = target_yaw_record[-1]
 
                     #print global location for debug
-                    location_record.append(Global_xyz[2])
-                    target_record.append(target_angle[2])
-
+                    location_record.append(Global_xyz[1])
+                    target_record.append(Global_xyz_filtered[1])
+                    
                     if angle_reached : 
                         target_angle = Global_xyz 
 
@@ -381,7 +381,7 @@ fig, ax = plt.subplots()
 
 ax.plot(t, angle_record,label='IMU angle')
 ax.plot(t,location_record,label='global angle')
-ax.plot(t,theta_record,label='camera angle')
+ax.plot(t,theta_record,label='deltaangle')
 ax.plot(t,target_record,label='target angle')
 
 
