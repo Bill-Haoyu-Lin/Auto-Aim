@@ -235,7 +235,7 @@ config.depthThresholds.upperThreshold = 10000
 calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
 config.roi = dai.Rect(topLeft, bottomRight)
 
-imu.enableIMUSensor(dai.IMUSensor.ROTATION_VECTOR, 60)
+imu.enableIMUSensor(dai.IMUSensor.ROTATION_VECTOR, 120)
 imu.setBatchReportThreshold(1)
 imu.setMaxBatchReports(10)
 imu.out.link(xlinkOut.input)
@@ -262,7 +262,6 @@ color.video.link(sync.inputs["video"])
 sync.out.link(xoutGrp.input)
 
 disparityMultiplier = 255.0 / stereo.initialConfig.getMaxDisparity()
-
 
 #initialization of imu 
 angles_default = [0,0,0]
@@ -303,7 +302,6 @@ while True:
         if frame["video"].shape == (480,640,3):
             # print("frame recived")
             
-            
             results = model(frame["video"],verbose=False)[0]
             for result in results:
                 if result != None:
@@ -314,12 +312,10 @@ while True:
                     center_x = int((boxes_xy[0]+boxes_xy[2])/2)
                     center_y = int((boxes_xy[1]+boxes_xy[3])/2)
                     
-            
                     # print(center_x, center_y)
                     topLeft = dai.Point2f(((4*(center_x-7))/4056), ((((center_y-7)+30)*4+220)/3040))# (960,540))[ 30:510, 160:800]
                     bottomRight = dai.Point2f(((4*(center_x+7))/4056),((((center_y+7)+30)*4+220)/3040))
    
- 
                     frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
                     frame["disparity"] = cv2.circle(frame["disparity"], (int((((4*(center_x+160))/4056)*640)),int(400*(((center_y+30)*4+220)/3040))), 60, (255, 255, 255) , 2)
                     
@@ -336,24 +332,22 @@ while True:
                     angle_rt= angles.copy()
                     cur_angle = np.array(angle_rt) - np.array(angles_default)
 
-
                     cur_angle[2] = wrap_angle(-cur_angle[2])
                     angle_record.append(cur_angle[2])
 
                     #roll pitch yaw
                     # Yaw clockwise + 
                     # Pitch down +
-                    #print("this is",theta)
-
+                    #print("theta is: =",theta)
                     Global_xyz[2]= cur_angle[2]+theta
                     Global_xyz[1]= phi - cur_angle[1]
-                    # Global_xyz = (np.array(Global_xyz)+np.array(last))/2
+
                     target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
                     target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
 
                     #Numbers for tunning 
                     b,a= signal.ellip(3, 0.04, 60, 0.125)
-                    target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=600)
+                    target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=60)
                     target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
 
         
@@ -367,13 +361,9 @@ while True:
                     if angle_reached : 
                         target_angle = Global_xyz 
 
-                    # if (-0.02<theta <0.02) or ((target_angle[2]-0.02)< cur_angle[2] <= (target_angle[2]+0.02)):
-                    #     angle_reached = True
-                    # else:
-                    #     angle_reached = False
-
                     #print(f"Global X: {Global_xyz[0]} mm, Y: {Global_xyz[1]} mm, Z: {Global_xyz[2]} mm")
                     last = Global_xyz
+
                     break
                 else:
                     enemy_detected= False
@@ -392,8 +382,6 @@ ax.plot(t, angle_record,label='IMU angle')
 ax.plot(t,location_record,label='global angle')
 ax.plot(t,theta_record,label='delta angle')
 ax.plot(t,target_record,label='target angle')
-
-
 
 ax.set(xlabel='time (s)', ylabel='angle',
        title='angle(rad) vs time')
