@@ -323,13 +323,13 @@ while True:
                     frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
                     frame["disparity"] = cv2.circle(frame["disparity"], (int((((4*(center_x+160))/4056)*640)),int(400*(((center_y+30)*4+220)/3040))), 60, (255, 255, 255) , 2)
                     
-                    focal_length_in_pixel = 1280 *0.95* 4.81 / 11.043412
+                    focal_length_in_pixel = 1280 * 4.81 / 11.043412
                     focal_length_in_pixel_pitch =  1.8*960 * 4.81 / 11.043412
                     
                     theta  = math.atan((center_x - 320)/focal_length_in_pixel)
                     phi = math.atan((center_y - 240)/focal_length_in_pixel_pitch)
                     
-                    theta_record.append(-phi)
+                    theta_record.append(theta)
 
                     # if abs(theta)<0.1:
                     #     theta =0
@@ -338,13 +338,13 @@ while True:
 
 
                     cur_angle[2] = wrap_angle(-cur_angle[2])
-                    angle_record.append(cur_angle[1])
+                    angle_record.append(cur_angle[2])
 
                     #roll pitch yaw
                     # Yaw clockwise + 
                     # Pitch down +
                     #print("this is",theta)
-                    
+
                     Global_xyz[2]= cur_angle[2]+theta
                     Global_xyz[1]= phi - cur_angle[1]
                     # Global_xyz = (np.array(Global_xyz)+np.array(last))/2
@@ -352,17 +352,17 @@ while True:
                     target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
 
                     #Numbers for tunning 
-                    b,a= signal.ellip(3, 0.05, 60, 0.125)
-                    target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust")
+                    b,a= signal.ellip(3, 0.04, 60, 0.125)
+                    target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=600)
                     target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
 
         
-                    Global_xyz_filtered[2] = target_yaw_record[-1]
-                    Global_xyz_filtered[1] = target_pitch_record[-1]-0.08
+                    Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
+                    Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
 
                     #print global location for debug
-                    location_record.append(Global_xyz[1])
-                    target_record.append(Global_xyz_filtered[1])
+                    location_record.append(Global_xyz[2])
+                    target_record.append(Global_xyz_filtered[2])
                     
                     if angle_reached : 
                         target_angle = Global_xyz 
