@@ -344,6 +344,11 @@ while True:
 
                     target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
                     target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
+                    target_yaw_window = target_yaw_record[-5:]
+
+                    z = np.polyfit([0,1,2,3,4],target_yaw_window,1)
+                    target_yaw_record[-1] = z[0]*7 + z[1]
+
 
                     #Numbers for tunning 
                     b,a= signal.ellip(3, 0.04, 60, 0.125)
@@ -351,7 +356,7 @@ while True:
                     target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
 
         
-                    Global_xyz_filtered[2] = target_yaw_record[-1]*1.3-0.15
+                    Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
                     Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
 
                     #print global location for debug
