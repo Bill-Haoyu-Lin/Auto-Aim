@@ -178,11 +178,12 @@ def call_heartBeat():
     global target_angle
     global Global_xyz_filtered
     while True:
-        print(target_angle[1])
+        
         if enemy_detected:
             CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz_filtered[1], gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
         else:
             CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz_filtered[1], gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
+        print(target_angle[1])
         time.sleep(1/500)
 
 model = YOLO("best.pt")
@@ -327,8 +328,9 @@ while True:
                     
                     theta_record.append(theta)
 
-                    # if abs(theta)<0.1:
-                    #     theta =0
+                    # if abs(theta) >0.25:
+                    #     theta = theta * 2
+
                     angle_rt= angles.copy()
                     cur_angle = np.array(angle_rt) - np.array(angles_default)
 
@@ -344,19 +346,24 @@ while True:
 
                     target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
                     target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
-                    target_yaw_window = target_yaw_record[-5:]
 
-                    z = np.polyfit([0,1,2,3,4],target_yaw_window,1)
-                    target_yaw_record[-1] = z[0]*7 + z[1]
 
 
                     #Numbers for tunning 
                     b,a= signal.ellip(3, 0.04, 60, 0.125)
-                    target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=60)
+                    target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=70)
                     target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
+                    
+                    
+                    target_yaw_window = target_yaw_record[-10:]
+                    z = np.polyfit([0,1,2,3,4,5,6,7,8,9],target_yaw_window,3)
+                    pred = z[0]*10 + z[1]
+                    
+                    if z[0] >5:
+                        target_yaw_record[-1] *= 1.5
 
-        
                     Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
+                    # Global_xyz_filtered[2] = pred -0.1
                     Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
 
                     #print global location for debug
