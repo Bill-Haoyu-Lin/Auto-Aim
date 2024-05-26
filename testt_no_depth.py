@@ -348,25 +348,10 @@ while True:
                     #Numbers for tunning 
                     b,a= signal.ellip(3, 0.04, 60, 0.125)
                     target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=60)
-                    # current process is slow, we need to predict the next values from the previous values
-                    
-                    if len(target_yaw_record) >= 2:
-                        delta_yaw = target_yaw_record[-1] - target_yaw_record[-2]
-                        Global_xyz_filtered[2] = target_yaw_record[-1] + delta_yaw
-                    else:
-                        Global_xyz_filtered[2] = target_yaw_record[-1]
-                    
-                    if len(target_pitch_record) >= 2:
-                        delta_pitch = target_pitch_record[-1] - target_pitch_record[-2]
-                        Global_xyz_filtered[1] = target_pitch_record[-1] + delta_pitch
-                    else:
-                        Global_xyz_filtered[1] = target_pitch_record[-1]
-
-
                     target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
 
         
-                    Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
+                    Global_xyz_filtered[2] = target_yaw_record[-1]*1.3-0.15
                     Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
 
                     #print global location for debug
