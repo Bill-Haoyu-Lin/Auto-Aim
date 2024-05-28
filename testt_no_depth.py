@@ -195,7 +195,6 @@ def call_heartBeat():
 
 
 def main():
-
     model = YOLO("best.pt")
     CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyUSB0')
 
@@ -310,6 +309,7 @@ def main():
     while True:
 
         if not frame["video"] is None:
+
             if frame["video"].shape == (480,640,3):
                 # print("frame recived")
                 
@@ -409,9 +409,9 @@ def main():
                         last = Global_xyz
                         
                         break
-            else:
-                Global_xyz_filtered[2]+= 0.1
-                enemy_detected= False
+                    else:
+                        Global_xyz_filtered[2]+= 0.1
+                        enemy_detected= False
         cv2.imshow("video", frame["video"])
         cv2.imshow("depth", frame["disparity"])
 
