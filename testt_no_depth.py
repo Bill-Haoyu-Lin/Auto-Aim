@@ -12,7 +12,10 @@ import CvCmdApi
 
 import matplotlib.pyplot as plt
 from scipy import signal
+from filterpy.kalman import ExtendedKalmanFilter as EKF 
+from filterpy.common import Q_discrete_white_noise
 
+# spherical to cartesian coordinates transformation
 def spherical_to_cartesian(r, phi, theta):
     phi = ((phi + np.pi) % (2*np.pi)) - np.pi
 
@@ -21,6 +24,7 @@ def spherical_to_cartesian(r, phi, theta):
     z = r * np.cos(theta)
     return x, -y, z
 
+# Euler angles to quaternion
 def euler_from_quaternion(x, y, z, w):
         """
         Convert a quaternion into euler angles (roll, pitch, yaw)
@@ -44,10 +48,12 @@ def euler_from_quaternion(x, y, z, w):
         #OUTPUT --> i : yaw, j : roll, k : pitch 
         return [roll_x, pitch_y, yaw_z] # in radians
 
+# Wrap angle to range -pi to pi
 def wrap_angle(angle):
     # Wrap angle to range -pi to pi
     return (angle + np.pi) % (2 * np.pi) - np.pi
 
+# Transform 3D coordinates from camera frame to base frame
 def tramform2base(x,y,z,angles):
     x = x+20 # 200 mm offset from camera to type-c board
     pitch = round(angles[1], 3)
@@ -83,6 +89,7 @@ def tramform2base(x,y,z,angles):
             round(pitch_final, 2), 
             round(yaw_final, 2)]
 
+# Get frame,IMU,Depth from camera
 def get_frame_from_camera():    
     with dai.Device(pipeline) as device:
         global frame
@@ -171,6 +178,7 @@ def get_frame_from_camera():
             cfg.addROI(config)
             spatialCalcConfigInQueue.send(cfg)
 
+# Heartbeat from CV to Control
 def call_heartBeat():
     global enemy_detected
     global Global_xyz
@@ -178,13 +186,32 @@ def call_heartBeat():
     global target_angle
     global Global_xyz_filtered
     while True:
-        
+        print(target_angle[1])
         if enemy_detected:
             CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz_filtered[1], gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
         else:
             CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz_filtered[1], gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
-        print(target_angle[1])
         time.sleep(1/500)
+
+# Define the state transition function f
+def fx(x, dt):
+    """ State transition function for the EKF """
+    return x  # In this case, angle remains the same with small noise
+
+# Define the Jacobian of the state transition function
+def jfx(x, dt):
+    """ Jacobian of the state transition function """
+    return np.array([[1]])
+
+# Define the measurement function h
+def hx(x):
+    """ Measurement function """
+    return x
+
+# Define the Jacobian of the measurement function
+def jhx(x):
+    """ Jacobian of the measurement function """
+    return np.array([[1]])
 
 model = YOLO("best.pt")
 CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyUSB0')
@@ -328,9 +355,8 @@ while True:
                     
                     theta_record.append(theta)
 
-                    # if abs(theta) >0.25:
-                    #     theta = theta * 2
-
+                    # if abs(theta)<0.1:
+                    #     theta =0
                     angle_rt= angles.copy()
                     cur_angle = np.array(angle_rt) - np.array(angles_default)
 
@@ -348,22 +374,27 @@ while True:
                     target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
 
 
-
                     #Numbers for tunning 
                     b,a= signal.ellip(3, 0.04, 60, 0.125)
                     target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=70)
                     target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
-                    
-                    
-                    target_yaw_window = target_yaw_record[-10:]
-                    z = np.polyfit([0,1,2,3,4,5,6,7,8,9],target_yaw_window,3)
-                    pred = z[0]*10 + z[1]
-                    
-                    if z[0] >5:
-                        target_yaw_record[-1] *= 1.5
+                    # Initialize the EKF
 
+                    ekf = EKF(dim_x=1, dim_z=1)
+
+                    # Initial state
+                    ekf.x = np.array([0.0])  # Starting angle
+                    ekf.F = np.array([[1]])  # State transition matrix
+                    ekf.R = np.array([[0.1]])  # Measurement noise covariance
+                    ekf.Q = Q_discrete_white_noise(dim=1, dt=1, var=0.05)  # Process noise covariance
+                    ekf.P *= 1000  # Initial state covariance
+
+                    # Example measurements (angles from -pi to pi)
+                    measurements = target_yaw_record[-10:]   # Example angle measurements in radians
+                    dt = 1.0  # Time step
+
+        
                     Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
-                    # Global_xyz_filtered[2] = pred -0.1
                     Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
 
                     #print global location for debug
@@ -378,6 +409,7 @@ while True:
 
                     break
                 else:
+                    Global_xyz_filtered[2]+= 0.1
                     enemy_detected= False
         cv2.imshow("video", frame["video"])
         cv2.imshow("depth", frame["disparity"])
