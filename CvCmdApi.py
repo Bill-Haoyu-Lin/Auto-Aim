@@ -14,7 +14,7 @@ class CvCmdHandler:
     MIN_TX_SEPARATION_SEC = 0  # reserved for future, currently control board is fast enough
     MIN_INFO_REQ_SEPARATION_SEC = 1
     SHOOT_TIMEOUT_SEC = 2
-    DEBUG_CV = False
+    DEBUG_CV = True
 
     class eMsgType(Enum):
         MSG_MODE_CONTROL = b'\x10'
@@ -130,9 +130,9 @@ class CvCmdHandler:
         return (self.AutoAimSwitch, self.AutoMoveSwitch, self.EnemySwitch)
 
     def CvCmd_ConditionSignals(self, gimbal_pitch_target, gimbal_yaw_target, chassis_speed_x, chassis_speed_y):
-        if self.DEBUG_CV:
-            print("gimbal_yaw_target: ", gimbal_yaw_target, "gimbal_pitch_target: ", gimbal_pitch_target)
-            print("x_speed: ", chassis_speed_x, "y_speed: ", chassis_speed_y)
+        # if self.DEBUG_CV:
+            # print("gimbal_yaw_target: ", gimbal_yaw_target, "gimbal_pitch_target: ", gimbal_pitch_target)
+            # print("x_speed: ", chassis_speed_x, "y_speed: ", chassis_speed_y)
 
         # Gimbal: pixel to angle conversion
         # TODO: Use parabolic instead of linear trajectory

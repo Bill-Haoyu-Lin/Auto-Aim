@@ -193,249 +193,252 @@ def call_heartBeat():
             CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=Global_xyz_filtered[1], gimbal_yaw_target=Global_xyz_filtered[2], chassis_speed_x=0, chassis_speed_y=0)
         time.sleep(1/500)
 
-# Define the state transition function f
-def fx(x, dt):
-    """ State transition function for the EKF """
-    return x  # In this case, angle remains the same with small noise
 
-# Define the Jacobian of the state transition function
-def jfx(x, dt):
-    """ Jacobian of the state transition function """
-    return np.array([[1]])
+def main():
 
-# Define the measurement function h
-def hx(x):
-    """ Measurement function """
-    return x
+    model = YOLO("best.pt")
+    CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyUSB0')
 
-# Define the Jacobian of the measurement function
-def jhx(x):
-    """ Jacobian of the measurement function """
-    return np.array([[1]])
+    pipeline = dai.Pipeline()
 
-model = YOLO("best.pt")
-CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyUSB0')
+    monoLeft = pipeline.create(dai.node.MonoCamera)
+    monoRight = pipeline.create(dai.node.MonoCamera)
+    color = pipeline.create(dai.node.ColorCamera)
+    stereo = pipeline.create(dai.node.StereoDepth)
+    spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
+    imu = pipeline.create(dai.node.IMU)
+    sync = pipeline.create(dai.node.Sync)
 
-pipeline = dai.Pipeline()
+    color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+    color.setFps(60)
 
-monoLeft = pipeline.create(dai.node.MonoCamera)
-monoRight = pipeline.create(dai.node.MonoCamera)
-color = pipeline.create(dai.node.ColorCamera)
-stereo = pipeline.create(dai.node.StereoDepth)
-spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
-imu = pipeline.create(dai.node.IMU)
-sync = pipeline.create(dai.node.Sync)
+    xoutGrp = pipeline.create(dai.node.XLinkOut)
 
-color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-color.setFps(60)
+    #Add for depth video sync
+    xoutDepth = pipeline.create(dai.node.XLinkOut)
+    xoutSpatialData = pipeline.create(dai.node.XLinkOut)
+    xinSpatialCalcConfig = pipeline.create(dai.node.XLinkIn)
 
-xoutGrp = pipeline.create(dai.node.XLinkOut)
+    #Add for IMU Xlink
+    xlinkOut = pipeline.create(dai.node.XLinkOut)
 
-#Add for depth video sync
-xoutDepth = pipeline.create(dai.node.XLinkOut)
-xoutSpatialData = pipeline.create(dai.node.XLinkOut)
-xinSpatialCalcConfig = pipeline.create(dai.node.XLinkIn)
+    xoutGrp.setStreamName("xout")
 
-#Add for IMU Xlink
-xlinkOut = pipeline.create(dai.node.XLinkOut)
+    #Add for depth video sync
+    xoutDepth.setStreamName("depth")
+    xoutSpatialData.setStreamName("spatialData")
+    xinSpatialCalcConfig.setStreamName("spatialCalcConfig")
+    xlinkOut.setStreamName("imu")
 
-xoutGrp.setStreamName("xout")
+    monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+    monoLeft.setCamera("left")
+    monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+    monoRight.setCamera("right")
 
-#Add for depth video sync
-xoutDepth.setStreamName("depth")
-xoutSpatialData.setStreamName("spatialData")
-xinSpatialCalcConfig.setStreamName("spatialCalcConfig")
-xlinkOut.setStreamName("imu")
+    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_ACCURACY)
 
-monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-monoLeft.setCamera("left")
-monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-monoRight.setCamera("right")
+    #config roi
+    topLeft = dai.Point2f(0.45, 0.45)
+    bottomRight = dai.Point2f(0.55, 0.55)
+    config = dai.SpatialLocationCalculatorConfigData()
+    config.depthThresholds.lowerThreshold = 100
+    config.depthThresholds.upperThreshold = 10000
+    calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
+    config.roi = dai.Rect(topLeft, bottomRight)
 
-stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_ACCURACY)
+    imu.enableIMUSensor(dai.IMUSensor.ROTATION_VECTOR, 120)
+    imu.setBatchReportThreshold(1)
+    imu.setMaxBatchReports(10)
+    imu.out.link(xlinkOut.input)
 
-#config roi
-topLeft = dai.Point2f(0.45, 0.45)
-bottomRight = dai.Point2f(0.55, 0.55)
-config = dai.SpatialLocationCalculatorConfigData()
-config.depthThresholds.lowerThreshold = 100
-config.depthThresholds.upperThreshold = 10000
-calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
-config.roi = dai.Rect(topLeft, bottomRight)
+    spatialLocationCalculator.inputConfig.setWaitForMessage(False)
+    spatialLocationCalculator.initialConfig.addROI(config)
 
-imu.enableIMUSensor(dai.IMUSensor.ROTATION_VECTOR, 120)
-imu.setBatchReportThreshold(1)
-imu.setMaxBatchReports(10)
-imu.out.link(xlinkOut.input)
+    color.setCamera("color")
 
-spatialLocationCalculator.inputConfig.setWaitForMessage(False)
-spatialLocationCalculator.initialConfig.addROI(config)
+    sync.setSyncThreshold(timedelta(milliseconds=10))
 
-color.setCamera("color")
+    monoLeft.out.link(stereo.left)
+    monoRight.out.link(stereo.right)
+    spatialLocationCalculator.passthroughDepth.link(xoutDepth.input)
+    stereo.depth.link(spatialLocationCalculator.inputDepth)
 
-sync.setSyncThreshold(timedelta(milliseconds=10))
-
-monoLeft.out.link(stereo.left)
-monoRight.out.link(stereo.right)
-spatialLocationCalculator.passthroughDepth.link(xoutDepth.input)
-stereo.depth.link(spatialLocationCalculator.inputDepth)
-
-spatialLocationCalculator.out.link(xoutSpatialData.input)
-xinSpatialCalcConfig.out.link(spatialLocationCalculator.inputConfig)
+    spatialLocationCalculator.out.link(xoutSpatialData.input)
+    xinSpatialCalcConfig.out.link(spatialLocationCalculator.inputConfig)
 
 
-stereo.disparity.link(sync.inputs["disparity"])
-color.video.link(sync.inputs["video"])
+    stereo.disparity.link(sync.inputs["disparity"])
+    color.video.link(sync.inputs["video"])
 
-sync.out.link(xoutGrp.input)
+    sync.out.link(xoutGrp.input)
 
-disparityMultiplier = 255.0 / stereo.initialConfig.getMaxDisparity()
+    disparityMultiplier = 255.0 / stereo.initialConfig.getMaxDisparity()
 
-#initialization of imu 
-angles_default = [0,0,0]
-init_state = True
-frame = {"video": None, "disparity": None}
-angles = [0,0,0]
-frame_type  = 'disparity'
-last = [0,0,0]
-enemy_detected = False
+    #initialization of imu 
+    angles_default = [0,0,0]
+    init_state = True
+    frame = {"video": None, "disparity": None}
+    angles = [0,0,0]
+    frame_type  = 'disparity'
+    last = [0,0,0]
+    enemy_detected = False
 
-coordinates_3d = [0,0,0]
-Global_xyz = [0,0,0]
+    coordinates_3d = [0,0,0]
+    Global_xyz = [0,0,0]
 
-angle_record = []
-location_record = []
-frame_xyz_record = []
-theta_record = []
-target_record = []
+    angle_record = []
+    location_record = []
+    frame_xyz_record = []
+    theta_record = []
+    target_record = []
 
-angle_reached = True
-target_angle = [0,0,0]
-Global_xyz_filtered = [0,0,0]
+    angle_reached = True
+    target_angle = [0,0,0]
+    Global_xyz_filtered = [0,0,0]
 
-target_yaw_record = np.empty(60)
-target_pitch_record = np.empty(1)
+    target_yaw_record = np.empty(60)
+    target_pitch_record = np.empty(1)
 
-thread2 = Thread(target = call_heartBeat,args=())
-thread2.start()
-print("heartbeat start")
+    thread2 = Thread(target = call_heartBeat,args=())
+    thread2.start()
+    print("heartbeat start")
 
-thread1 = Thread(target = get_frame_from_camera,args=())
-thread1.start()
-print("Camera Thread start")
+    thread1 = Thread(target = get_frame_from_camera,args=())
+    thread1.start()
+    print("Camera Thread start")
 
-while True:
+    while True:
 
-    if not frame["video"] is None:
-        if frame["video"].shape == (480,640,3):
-            # print("frame recived")
+        if not frame["video"] is None:
+            if frame["video"].shape == (480,640,3):
+                # print("frame recived")
+                
+                results = model(frame["video"],verbose=False)[0]
+                for result in results:
+                    if result != None:
+
+                        enemy_detected = True
+                        boxes_xy = result.boxes.xyxy[0]
+
+                        center_x = int((boxes_xy[0]+boxes_xy[2])/2)
+                        center_y = int((boxes_xy[1]+boxes_xy[3])/2)
+                        
+                        # print(center_x, center_y)
+                        topLeft = dai.Point2f(((4*(center_x-7))/4056), ((((center_y-7)+30)*4+220)/3040))# (960,540))[ 30:510, 160:800]
+                        bottomRight = dai.Point2f(((4*(center_x+7))/4056),((((center_y+7)+30)*4+220)/3040))
+    
+                        frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
+                        frame["disparity"] = cv2.circle(frame["disparity"], (int((((4*(center_x+160))/4056)*640)),int(400*(((center_y+30)*4+220)/3040))), 60, (255, 255, 255) , 2)
+                        
+                        focal_length_in_pixel = 1280 * 4.81 / 11.043412
+                        focal_length_in_pixel_pitch =  1.8*960 * 4.81 / 11.043412
+                        
+                        theta  = math.atan((center_x - 320)/focal_length_in_pixel)
+                        phi = math.atan((center_y - 240)/focal_length_in_pixel_pitch)
+                        
+                        theta_record.append(theta)
+
+                        # if abs(theta) >0.25:
+                        #     theta = theta * 2
+
+                        angle_rt= angles.copy()
+                        cur_angle = np.array(angle_rt) - np.array(angles_default)
+
+                        cur_angle[2] = wrap_angle(-cur_angle[2])
+                        angle_record.append(cur_angle[2])
+
+                        #roll pitch yaw
+                        # Yaw clockwise + 
+                        # Pitch down +
+                        #print("theta is: =",theta)
+                        Global_xyz[2]= cur_angle[2]+theta
+                        Global_xyz[1]= phi - cur_angle[1]
+
+                        target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
+                        target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
+
+
+                        #Numbers for tunning 
+                        b,a= signal.ellip(3, 0.04, 60, 0.125)
+                        target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=70)
+                        target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
+                        
+                        
+                        target_yaw_window = target_yaw_record[-10:]
+                        z = np.polyfit([0,1,2,3,4,5,6,7,8,9],target_yaw_window,3)
+                        pred = z[0]*10 + z[1]
+                        
+                        if z[0] >5:
+                            target_yaw_record[-1] *= 1.5
+
+                        Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
+                        # Global_xyz_filtered[2] = pred -0.1
+                        Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
+                    
+                        #Numbers for tunning 
+                        b,a= signal.ellip(3, 0.04, 60, 0.125)
+                        target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=70)
+                        target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
+                        # Initialize the EKF
+
+                        ekf = EKF(dim_x=1, dim_z=1)
+
+                        # Initial state
+                        ekf.x = np.array([0.0])  # Starting angle
+                        ekf.F = np.array([[1]])  # State transition matrix
+                        ekf.R = np.array([[0.1]])  # Measurement noise covariance
+                        ekf.Q = Q_discrete_white_noise(dim=1, dt=1, var=0.05)  # Process noise covariance
+                        ekf.P *= 1000  # Initial state covariance
+
+                        # Example measurements (angles from -pi to pi)
+                        measurements = target_yaw_record[-10:]   # Example angle measurements in radians
+                        dt = 1.0  # Time step
+
             
-            results = model(frame["video"],verbose=False)[0]
-            for result in results:
-                if result != None:
+                        Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
+                        Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
 
-                    enemy_detected = True
-                    boxes_xy = result.boxes.xyxy[0]
+                        #print global location for debug
+                        location_record.append(Global_xyz[2])
+                        target_record.append(Global_xyz_filtered[2])
+                        
+                        if angle_reached : 
+                            target_angle = Global_xyz 
 
-                    center_x = int((boxes_xy[0]+boxes_xy[2])/2)
-                    center_y = int((boxes_xy[1]+boxes_xy[3])/2)
-                    
-                    # print(center_x, center_y)
-                    topLeft = dai.Point2f(((4*(center_x-7))/4056), ((((center_y-7)+30)*4+220)/3040))# (960,540))[ 30:510, 160:800]
-                    bottomRight = dai.Point2f(((4*(center_x+7))/4056),((((center_y+7)+30)*4+220)/3040))
-   
-                    frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
-                    frame["disparity"] = cv2.circle(frame["disparity"], (int((((4*(center_x+160))/4056)*640)),int(400*(((center_y+30)*4+220)/3040))), 60, (255, 255, 255) , 2)
-                    
-                    focal_length_in_pixel = 1280 * 4.81 / 11.043412
-                    focal_length_in_pixel_pitch =  1.8*960 * 4.81 / 11.043412
-                    
-                    theta  = math.atan((center_x - 320)/focal_length_in_pixel)
-                    phi = math.atan((center_y - 240)/focal_length_in_pixel_pitch)
-                    
-                    theta_record.append(theta)
-
-                    # if abs(theta)<0.1:
-                    #     theta =0
-                    angle_rt= angles.copy()
-                    cur_angle = np.array(angle_rt) - np.array(angles_default)
-
-                    cur_angle[2] = wrap_angle(-cur_angle[2])
-                    angle_record.append(cur_angle[2])
-
-                    #roll pitch yaw
-                    # Yaw clockwise + 
-                    # Pitch down +
-                    #print("theta is: =",theta)
-                    Global_xyz[2]= cur_angle[2]+theta
-                    Global_xyz[1]= phi - cur_angle[1]
-
-                    target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
-                    target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
-
-
-                    #Numbers for tunning 
-                    b,a= signal.ellip(3, 0.04, 60, 0.125)
-                    target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=70)
-                    target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
-                    # Initialize the EKF
-
-                    ekf = EKF(dim_x=1, dim_z=1)
-
-                    # Initial state
-                    ekf.x = np.array([0.0])  # Starting angle
-                    ekf.F = np.array([[1]])  # State transition matrix
-                    ekf.R = np.array([[0.1]])  # Measurement noise covariance
-                    ekf.Q = Q_discrete_white_noise(dim=1, dt=1, var=0.05)  # Process noise covariance
-                    ekf.P *= 1000  # Initial state covariance
-
-                    # Example measurements (angles from -pi to pi)
-                    measurements = target_yaw_record[-10:]   # Example angle measurements in radians
-                    dt = 1.0  # Time step
-
-        
-                    Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
-                    Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
-
-                    #print global location for debug
-                    location_record.append(Global_xyz[2])
-                    target_record.append(Global_xyz_filtered[2])
-                    
-                    if angle_reached : 
-                        target_angle = Global_xyz 
-
-                    #print(f"Global X: {Global_xyz[0]} mm, Y: {Global_xyz[1]} mm, Z: {Global_xyz[2]} mm")
-                    last = Global_xyz
-
-                    break
-                else:
-                    Global_xyz_filtered[2]+= 0.1
-                    enemy_detected= False
+                        #print(f"Global X: {Global_xyz[0]} mm, Y: {Global_xyz[1]} mm, Z: {Global_xyz[2]} mm")
+                        last = Global_xyz
+                        
+                        break
+            else:
+                Global_xyz_filtered[2]+= 0.1
+                enemy_detected= False
         cv2.imshow("video", frame["video"])
         cv2.imshow("depth", frame["disparity"])
 
-    if cv2.waitKey(1) == ord('q'):
-        break
+        if cv2.waitKey(1) == ord('q'):
+            break
 
 
-length = len(angle_record)
-t = [(i + 1) / 100 for i in range(length)]
-fig, ax = plt.subplots()
+    length = len(angle_record)
+    t = [(i + 1) / 100 for i in range(length)]
+    fig, ax = plt.subplots()
 
-ax.plot(t, angle_record,label='IMU angle')
-ax.plot(t,location_record,label='global angle')
-ax.plot(t,theta_record,label='delta angle')
-ax.plot(t,target_record,label='target angle')
+    ax.plot(t, angle_record,label='IMU angle')
+    ax.plot(t,location_record,label='global angle')
+    ax.plot(t,theta_record,label='delta angle')
+    ax.plot(t,target_record,label='target angle')
 
-ax.set(xlabel='time (s)', ylabel='angle',
-       title='angle(rad) vs time')
-ax.legend()
-ax.grid()
+    ax.set(xlabel='time (s)', ylabel='angle',
+        title='angle(rad) vs time')
+    ax.legend()
+    ax.grid()
 
-fig.savefig("test.png")
-plt.show()
+    fig.savefig("test.png")
+    plt.show()
+    
+    #kill the camera thread    
+    thread1.join()
+    thread2.join()
 
-
-#kill the camera thread    
-thread1.join()
-thread2.join()
+if __name__ == "__main__":
+    main()
