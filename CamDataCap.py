@@ -13,6 +13,7 @@ class depth_camera:
     calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
     coordinates_3d = [0,0,0]
     angles_default = [0,0,0]
+    colorfps = 60
 
     def __init__(self):
 
@@ -29,7 +30,7 @@ class depth_camera:
 
         #Config color camera
         color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-        color.setFps(60)
+        color.setFps(self.colorfps)
 
         #Create LinkOut nodes
         xoutGrp = self.pipeline.create(dai.node.XLinkOut)
@@ -187,6 +188,10 @@ class depth_camera:
     
     def get_default_angles(self):
         return self.angles_default
+    
+    def set_ROI(self, topLeft, bottomRight):
+        self.topLeft = dai.Point2f(topLeft[0], topLeft[1])
+        self.bottomRight = dai.Point2f(bottomRight[0], bottomRight[1])
 
     def close(self):
         self.device.close()
