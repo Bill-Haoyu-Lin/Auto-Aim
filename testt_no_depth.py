@@ -1,11 +1,7 @@
 from ultralytics import YOLO
 import numpy as np
-from numpy.linalg import inv
-
-from datetime import timedelta
 import math
 import cv2
-import time
 from threading import Thread
 
 import CamDataCap
@@ -18,35 +14,28 @@ from filterpy.common import Q_discrete_white_noise
 
 def main():
     model = YOLO("./models/best.pt")
-    targets = target.Target()
+
+    enemy = target.Target()
     cam = CamDataCap.depth_camera()
 
     #initialization of imu 
-    angles_default = [0,0,0]
-    init_state = True
     frame = {"video": None, "disparity": None}
-    angles = [0,0,0]
-    frame_type  = 'disparity'
-    last = [0,0,0]
-    enemy_detected = False
 
-    coordinates_3d = [0,0,0]
+    last = [0,0,0]
+
     Global_xyz = [0,0,0]
 
     angle_record = []
     location_record = []
-    frame_xyz_record = []
     theta_record = []
     target_record = []
 
-    angle_reached = True
-    target_angle = [0,0,0]
     Global_xyz_filtered = [0,0,0]
 
     target_yaw_record = np.empty(60)
     target_pitch_record = np.empty(1)
 
-    thread2 = Thread(target = targets.call_heartBeat,args=())
+    thread2 = Thread(target = enemy.call_heartBeat,args=())
     thread2.start()
     print("heartbeat start")
 
@@ -55,17 +44,18 @@ def main():
     print("Camera Thread start")
 
     while True:
+        frame = cam.frame.copy()
 
         if not frame["video"] is None:
 
             if frame["video"].shape == (480,640,3):
-                # print("frame recived")
                 
                 results = model(frame["video"],verbose=False)[0]
                 for result in results:
                     if result != None:
 
-                        enemy_detected = True
+                        enemy.is_detected(True)
+
                         boxes_xy = result.boxes.xyxy[0]
 
                         center_x = int((boxes_xy[0]+boxes_xy[2])/2)
@@ -90,8 +80,8 @@ def main():
                         # if abs(theta) >0.25:
                         #     theta = theta * 2
 
-                        angle_rt= angles.copy()
-                        cur_angle = np.array(angle_rt) - np.array(angles_default)
+                        angle_rt= cam.cur_angle.copy()
+                        cur_angle = np.array(angle_rt) - np.array(cam.angles_default)
 
                         cur_angle[2] = CvHelper.wrap_angle(-cur_angle[2])
                         angle_record.append(cur_angle[2])
@@ -107,29 +97,20 @@ def main():
                         target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
 
 
-                        #Numbers for tunning 
-                        b,a= signal.ellip(3, 0.04, 60, 0.125)
-                        target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=70)
-                        target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
+                        target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record[-1],target_yaw_record[-1])
+    
+                        # target_yaw_window = target_yaw_record[-10:]
+                        # z = np.polyfit([0,1,2,3,4,5,6,7,8,9],target_yaw_window,3)
+                        # pred = z[0]*10 + z[1]
                         
-                        
-                        target_yaw_window = target_yaw_record[-10:]
-                        z = np.polyfit([0,1,2,3,4,5,6,7,8,9],target_yaw_window,3)
-                        pred = z[0]*10 + z[1]
-                        
-                        if z[0] >5:
-                            target_yaw_record[-1] *= 1.5
+                        # if z[0] >5:
+                        #     target_yaw_record[-1] *= 1.5
 
                         Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
                         # Global_xyz_filtered[2] = pred -0.1
                         Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
-                    
-                        #Numbers for tunning 
-                        b,a= signal.ellip(3, 0.04, 60, 0.125)
-                        target_yaw_record = signal.filtfilt(b, a,target_yaw_record,method="gust", irlen=70)
-                        target_pitch_record = signal.filtfilt(b, a,target_pitch_record,method="gust")
-                        # Initialize the EKF
-
+                        
+                       # Initialize the EKF
                         ekf = EKF(dim_x=1, dim_z=1)
 
                         # Initial state
@@ -143,24 +124,20 @@ def main():
                         measurements = target_yaw_record[-10:]   # Example angle measurements in radians
                         dt = 1.0  # Time step
 
-            
-                        Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
-                        Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
+                        enemy.set_target_angle(Global_xyz_filtered)
 
                         #print global location for debug
                         location_record.append(Global_xyz[2])
                         target_record.append(Global_xyz_filtered[2])
                         
-                        if angle_reached : 
-                            target_angle = Global_xyz 
-
                         #print(f"Global X: {Global_xyz[0]} mm, Y: {Global_xyz[1]} mm, Z: {Global_xyz[2]} mm")
                         last = Global_xyz
                         
                         break
                     else:
                         Global_xyz_filtered[2]+= 0.1
-                        enemy_detected= False
+                        enemy.is_detected(False)
+
         cv2.imshow("video", frame["video"])
         cv2.imshow("depth", frame["disparity"])
 
