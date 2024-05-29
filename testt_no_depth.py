@@ -90,7 +90,7 @@ def tramform2base(x,y,z,angles):
             round(yaw_final, 2)]
 
 # Get frame,IMU,Depth from camera
-def get_frame_from_camera():    
+def get_frame_from_camera(pipeline,):    
     with dai.Device(pipeline) as device:
         global frame
         global angles
@@ -100,6 +100,82 @@ def get_frame_from_camera():
         global topLeft, bottomRight
         global coordinates_3d
         global cfg
+
+        pipeline = dai.Pipeline()
+
+        monoLeft = pipeline.create(dai.node.MonoCamera)
+        monoRight = pipeline.create(dai.node.MonoCamera)
+        color = pipeline.create(dai.node.ColorCamera)
+        stereo = pipeline.create(dai.node.StereoDepth)
+        spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
+        imu = pipeline.create(dai.node.IMU)
+        sync = pipeline.create(dai.node.Sync)
+
+        color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+        color.setFps(60)
+
+        xoutGrp = pipeline.create(dai.node.XLinkOut)
+
+        #Add for depth video sync
+        xoutDepth = pipeline.create(dai.node.XLinkOut)
+        xoutSpatialData = pipeline.create(dai.node.XLinkOut)
+        xinSpatialCalcConfig = pipeline.create(dai.node.XLinkIn)
+
+        #Add for IMU Xlink
+        xlinkOut = pipeline.create(dai.node.XLinkOut)
+
+        xoutGrp.setStreamName("xout")
+
+        #Add for depth video sync
+        xoutDepth.setStreamName("depth")
+        xoutSpatialData.setStreamName("spatialData")
+        xinSpatialCalcConfig.setStreamName("spatialCalcConfig")
+        xlinkOut.setStreamName("imu")
+
+        monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+        monoLeft.setCamera("left")
+        monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+        monoRight.setCamera("right")
+
+        stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_ACCURACY)
+
+        #config roi
+        topLeft = dai.Point2f(0.45, 0.45)
+        bottomRight = dai.Point2f(0.55, 0.55)
+        config = dai.SpatialLocationCalculatorConfigData()
+        config.depthThresholds.lowerThreshold = 100
+        config.depthThresholds.upperThreshold = 10000
+        calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
+        config.roi = dai.Rect(topLeft, bottomRight)
+
+        imu.enableIMUSensor(dai.IMUSensor.ROTATION_VECTOR, 120)
+        imu.setBatchReportThreshold(1)
+        imu.setMaxBatchReports(10)
+        imu.out.link(xlinkOut.input)
+
+        spatialLocationCalculator.inputConfig.setWaitForMessage(False)
+        spatialLocationCalculator.initialConfig.addROI(config)
+
+        color.setCamera("color")
+
+        sync.setSyncThreshold(timedelta(milliseconds=10))
+
+        monoLeft.out.link(stereo.left)
+        monoRight.out.link(stereo.right)
+        spatialLocationCalculator.passthroughDepth.link(xoutDepth.input)
+        stereo.depth.link(spatialLocationCalculator.inputDepth)
+
+        spatialLocationCalculator.out.link(xoutSpatialData.input)
+        xinSpatialCalcConfig.out.link(spatialLocationCalculator.inputConfig)
+
+
+        stereo.disparity.link(sync.inputs["disparity"])
+        color.video.link(sync.inputs["video"])
+
+        sync.out.link(xoutGrp.input)
+
+        disparityMultiplier = 255.0 / stereo.initialConfig.getMaxDisparity()
+
 
         queue = device.getOutputQueue("xout", 10, False)
 
@@ -179,7 +255,7 @@ def get_frame_from_camera():
             spatialCalcConfigInQueue.send(cfg)
 
 # Heartbeat from CV to Control
-def call_heartBeat():
+def call_heartBeat(CvCmder):
     global enemy_detected
     global Global_xyz
     global last
@@ -198,80 +274,6 @@ def main():
     model = YOLO("best.pt")
     CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyUSB0')
 
-    pipeline = dai.Pipeline()
-
-    monoLeft = pipeline.create(dai.node.MonoCamera)
-    monoRight = pipeline.create(dai.node.MonoCamera)
-    color = pipeline.create(dai.node.ColorCamera)
-    stereo = pipeline.create(dai.node.StereoDepth)
-    spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
-    imu = pipeline.create(dai.node.IMU)
-    sync = pipeline.create(dai.node.Sync)
-
-    color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    color.setFps(60)
-
-    xoutGrp = pipeline.create(dai.node.XLinkOut)
-
-    #Add for depth video sync
-    xoutDepth = pipeline.create(dai.node.XLinkOut)
-    xoutSpatialData = pipeline.create(dai.node.XLinkOut)
-    xinSpatialCalcConfig = pipeline.create(dai.node.XLinkIn)
-
-    #Add for IMU Xlink
-    xlinkOut = pipeline.create(dai.node.XLinkOut)
-
-    xoutGrp.setStreamName("xout")
-
-    #Add for depth video sync
-    xoutDepth.setStreamName("depth")
-    xoutSpatialData.setStreamName("spatialData")
-    xinSpatialCalcConfig.setStreamName("spatialCalcConfig")
-    xlinkOut.setStreamName("imu")
-
-    monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    monoLeft.setCamera("left")
-    monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    monoRight.setCamera("right")
-
-    stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_ACCURACY)
-
-    #config roi
-    topLeft = dai.Point2f(0.45, 0.45)
-    bottomRight = dai.Point2f(0.55, 0.55)
-    config = dai.SpatialLocationCalculatorConfigData()
-    config.depthThresholds.lowerThreshold = 100
-    config.depthThresholds.upperThreshold = 10000
-    calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
-    config.roi = dai.Rect(topLeft, bottomRight)
-
-    imu.enableIMUSensor(dai.IMUSensor.ROTATION_VECTOR, 120)
-    imu.setBatchReportThreshold(1)
-    imu.setMaxBatchReports(10)
-    imu.out.link(xlinkOut.input)
-
-    spatialLocationCalculator.inputConfig.setWaitForMessage(False)
-    spatialLocationCalculator.initialConfig.addROI(config)
-
-    color.setCamera("color")
-
-    sync.setSyncThreshold(timedelta(milliseconds=10))
-
-    monoLeft.out.link(stereo.left)
-    monoRight.out.link(stereo.right)
-    spatialLocationCalculator.passthroughDepth.link(xoutDepth.input)
-    stereo.depth.link(spatialLocationCalculator.inputDepth)
-
-    spatialLocationCalculator.out.link(xoutSpatialData.input)
-    xinSpatialCalcConfig.out.link(spatialLocationCalculator.inputConfig)
-
-
-    stereo.disparity.link(sync.inputs["disparity"])
-    color.video.link(sync.inputs["video"])
-
-    sync.out.link(xoutGrp.input)
-
-    disparityMultiplier = 255.0 / stereo.initialConfig.getMaxDisparity()
 
     #initialization of imu 
     angles_default = [0,0,0]
@@ -298,11 +300,11 @@ def main():
     target_yaw_record = np.empty(60)
     target_pitch_record = np.empty(1)
 
-    thread2 = Thread(target = call_heartBeat,args=())
+    thread2 = Thread(target = call_heartBeat,args=(CvCmder))
     thread2.start()
     print("heartbeat start")
 
-    thread1 = Thread(target = get_frame_from_camera,args=())
+    thread1 = Thread(target = get_frame_from_camera,args=(CvCmder))
     thread1.start()
     print("Camera Thread start")
 

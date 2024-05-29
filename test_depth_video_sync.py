@@ -118,8 +118,6 @@ def get_frame_from_camera():
                     frame["disparity"]= cv2.applyColorMap(frame["disparity"], cv2.COLORMAP_JET)
                 else:
                     frame["video"] = cv2.resize(frame_get, (960,540))[ 30:510, 160:800]
-
-
         
             #unpack IMU data
             for imuPacket in imuPackets:
@@ -142,11 +140,11 @@ def get_frame_from_camera():
                 # print(f"i: {tsF.format(angles[0])} j: {tsF.format(angles[1])} "
                 #     f"k: {tsF.format(angles[2])}",end='\r')
                 
-            config.roi = dai.Rect(topLeft, bottomRight)
-            config.calculationAlgorithm = calculationAlgorithm
-            cfg = dai.SpatialLocationCalculatorConfig()
-            cfg.addROI(config)
-            spatialCalcConfigInQueue.send(cfg)
+            # config.roi = dai.Rect(topLeft, bottomRight)
+            # config.calculationAlgorithm = calculationAlgorithm
+            # cfg = dai.SpatialLocationCalculatorConfig()
+            # cfg.addROI(config)
+            # spatialCalcConfigInQueue.send(cfg)
 
 model = YOLO("best.onnx")
 CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyTHS0')
@@ -250,7 +248,6 @@ while True:
             for result in results:
                 if result != None:
                     boxes_xy = result.boxes.xyxy[0]
-
                     center_x = int((boxes_xy[0]+boxes_xy[2])/2)
                     center_y = int((boxes_xy[1]+boxes_xy[3])/2)
                     
