@@ -139,12 +139,14 @@ def get_frame_from_camera():
             
                 # print(f"i: {tsF.format(angles[0])} j: {tsF.format(angles[1])} "
                 #     f"k: {tsF.format(angles[2])}",end='\r')
-                
-            # config.roi = dai.Rect(topLeft, bottomRight)
-            # config.calculationAlgorithm = calculationAlgorithm
-            # cfg = dai.SpatialLocationCalculatorConfig()
-            # cfg.addROI(config)
-            # spatialCalcConfigInQueue.send(cfg)
+
+            config = dai.SpatialLocationCalculatorConfigData()
+            config.roi = dai.Rect(topLeft, bottomRight)
+            config.calculationAlgorithm = calculationAlgorithm
+            cfg = dai.SpatialLocationCalculatorConfig()
+            cfg.addROI(config)
+            cfg.setROIs(config)
+            spatialCalcConfigInQueue.send(cfg)
 
 model = YOLO("best.onnx")
 CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyTHS0')
