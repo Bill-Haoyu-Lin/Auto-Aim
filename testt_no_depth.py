@@ -7,6 +7,7 @@ from threading import Thread
 import CamDataCap
 import CvHelper
 import target
+import time
 
 import matplotlib.pyplot as plt
 from filterpy.kalman import ExtendedKalmanFilter as EKF 
@@ -32,7 +33,7 @@ def main():
 
     Global_xyz_filtered = [0,0,0]
 
-    target_yaw_record = np.empty(60)
+    target_yaw_record = np.empty(70)
     target_pitch_record = np.empty(1)
 
     thread2 = Thread(target = enemy.call_heartBeat,args=())
@@ -43,8 +44,10 @@ def main():
     thread1.start()
     print("Camera Thread start")
 
+    time.sleep(4)
+
     while True:
-        frame = cam.frame.copy()
+        frame = cam.frame
 
         if not frame["video"] is None:
 
@@ -80,7 +83,7 @@ def main():
                         # if abs(theta) >0.25:
                         #     theta = theta * 2
 
-                        angle_rt= cam.cur_angle.copy()
+                        angle_rt= cam.cur_angle
                         cur_angle = np.array(angle_rt) - np.array(cam.angles_default)
 
                         cur_angle[2] = CvHelper.wrap_angle(-cur_angle[2])
@@ -97,7 +100,7 @@ def main():
                         target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
 
 
-                        target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record[-1],target_yaw_record[-1])
+                        target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record,target_yaw_record)
     
                         # target_yaw_window = target_yaw_record[-10:]
                         # z = np.polyfit([0,1,2,3,4,5,6,7,8,9],target_yaw_window,3)
@@ -111,13 +114,13 @@ def main():
                         Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
                         
                        # Initialize the EKF
-                        ekf = EKF(dim_x=1, dim_z=1)
+                        ekf = EKF(dim_x=1, dim_z=2)
 
                         # Initial state
                         ekf.x = np.array([0.0])  # Starting angle
                         ekf.F = np.array([[1]])  # State transition matrix
                         ekf.R = np.array([[0.1]])  # Measurement noise covariance
-                        ekf.Q = Q_discrete_white_noise(dim=1, dt=1, var=0.05)  # Process noise covariance
+                        ekf.Q = Q_discrete_white_noise(dim=2, dt=1, var=0.05)  # Process noise covariance
                         ekf.P *= 1000  # Initial state covariance
 
                         # Example measurements (angles from -pi to pi)
@@ -130,7 +133,6 @@ def main():
                         location_record.append(Global_xyz[2])
                         target_record.append(Global_xyz_filtered[2])
                         
-                        #print(f"Global X: {Global_xyz[0]} mm, Y: {Global_xyz[1]} mm, Z: {Global_xyz[2]} mm")
                         last = Global_xyz
                         
                         break
