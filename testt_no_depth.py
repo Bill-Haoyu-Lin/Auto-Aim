@@ -52,8 +52,10 @@ def main():
         if not frame["video"] is None:
 
             if frame["video"].shape == (480,640,3):
+
                 start_time = time.time()  # Record the start time
                 results = model(frame["video"],verbose=False)[0]
+                end_time = time.time() 
                 elapsed_time = end_time - start_time 
                 print('filter time: ', elapsed_time)
 
