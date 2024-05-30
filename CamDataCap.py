@@ -6,7 +6,7 @@ import CvHelper
 
 class depth_camera:
 
-    frame = {"video": None, "disparity": None}
+    
     topLeft = dai.Point2f(0.45, 0.45)
     bottomRight = dai.Point2f(0.55, 0.55)
     pipeline = dai.Pipeline()
@@ -14,9 +14,10 @@ class depth_camera:
     coordinates_3d = [0,0,0]
     angles_default = [0,0,0]
     colorfps = 60
+    cur_angle = [0,0,0]
 
     def __init__(self):
-
+        self.frame = {"video": None, "disparity": None}
         self.pipeline = dai.Pipeline()
 
         #create pipeline components
@@ -167,10 +168,10 @@ class depth_camera:
                     # tsF  = "{:.03f}"
 
                     #i : yaw, j : roll, k : pitch
-                    angles = CvHelper.euler_from_quaternion(rVvalues.i,rVvalues.j,rVvalues.k,rVvalues.real)
+                    self.cur_angle = CvHelper.euler_from_quaternion(rVvalues.i,rVvalues.j,rVvalues.k,rVvalues.real)
                     
                     if init_state:
-                        self.angles_default = angles
+                        self.angles_default = self.cur_angle
                         init_state = False
                 
                 config = dai.SpatialLocationCalculatorConfigData()    

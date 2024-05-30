@@ -12,7 +12,7 @@ class Target:
     def set_target_angle(self, target_angle):
         self.target_angle = target_angle
         
-    def set_enemy_detected(self, enemy_detected):
+    def is_detected(self, enemy_detected):
         self.enemy_detected = enemy_detected
 
     def get_target_angle(self):

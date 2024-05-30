@@ -111,6 +111,7 @@ def tramform2base(x,y,z,angles):
 # input : data collection list
 def ellip_filter(pitch_record, yaw_record):
 
+    
     # Create a elliptic filter
     b,a= signal.ellip(3, 0.04, 60, 0.125)
 
@@ -118,7 +119,7 @@ def ellip_filter(pitch_record, yaw_record):
     yaw_record_filtered = signal.filtfilt(b, a, yaw_record, method="gust", irlen=70)
     pitch_record_filtered = signal.filtfilt(b, a, pitch_record, method="gust")
 
-    return [pitch_record_filtered, yaw_record_filtered]
+    return [pitch_record_filtered[-1], yaw_record_filtered[-1]]
 
 
 
