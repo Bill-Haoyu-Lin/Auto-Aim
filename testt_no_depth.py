@@ -34,7 +34,7 @@ def main():
     Global_xyz_filtered = [0,0,0]
 
     target_yaw_record = np.empty(70)
-    target_pitch_record = np.empty(1)
+    target_pitch_record = np.empty(70)
 
     thread2 = Thread(target = enemy.call_heartBeat,args=())
     thread2.start()
@@ -105,7 +105,7 @@ def main():
                         target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
 
                         start_time = time.time()  # Record the start time
-                        target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record,target_yaw_record)
+                        target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record[-70:],target_yaw_record[-70:])
                         end_time = time.time()  # Record the end time
                         elapsed_time = end_time - start_time 
                         print('filter time: ', elapsed_time)
