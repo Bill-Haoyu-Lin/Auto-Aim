@@ -115,8 +115,8 @@ def ellip_filter(pitch_record, yaw_record):
     b,a= signal.ellip(3, 0.04, 60, 0.125)
 
     # Apply filter to data
-    yaw_record_filtered = signal.filtfilt(b, a, yaw_record, method="gust", irlen=70)
-    pitch_record_filtered = signal.filtfilt(b, a, pitch_record, method="gust", irlen=70)
+    yaw_record_filtered = signal.filtfilt(b, a, yaw_record, method="gust", irlen=60)
+    pitch_record_filtered = signal.filtfilt(b, a, pitch_record, method="gust", irlen=60)
 
     return [pitch_record_filtered[-1], yaw_record_filtered[-1]]
 
