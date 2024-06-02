@@ -13,10 +13,12 @@ class depth_camera:
     calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
     coordinates_3d = [0,0,0]
     angles_default = [0,0,0]
+    
     colorfps = 60
     cur_angle = [0,0,0]
 
     def __init__(self):
+        angles_min =[0,0,0]
         self.frame = {"video": None, "disparity": None}
         self.pipeline = dai.Pipeline()
 
@@ -100,7 +102,6 @@ class depth_camera:
         self.disparityMultiplier = 255.0 / stereo.initialConfig.getMaxDisparity()
         
     def start(self):
-
         # Pipeline is defined, now we can connect to the device
         with dai.Device(self.pipeline) as device:
 
@@ -172,6 +173,8 @@ class depth_camera:
                     
                     if init_state:
                         self.angles_default = self.cur_angle
+                        self.angles_min = self.angles_default
+                        self.angles_min[2] = self.angles_min[2] - 0.18
                         init_state = False
                 
                 config = dai.SpatialLocationCalculatorConfigData()    
