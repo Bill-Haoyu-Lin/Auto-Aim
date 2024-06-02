@@ -11,6 +11,8 @@ class Target:
         self.pitch_lower_limit = -1000
     
     def set_target_angle(self, target_angle):
+        if target_angle[1] <  self.pitch_lower_limit:
+            target_angle[1] =  self.pitch_lower_limit
         self.target_angle = target_angle
     
     def set_pitch_lower_limit(self, lower_limit):
