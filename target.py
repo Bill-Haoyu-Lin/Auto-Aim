@@ -8,9 +8,13 @@ class Target:
         self.enemy_detected = False
         self.Global_xyz_filtered = [0, 0, 0]
         self.CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyTHS0')
+        self.pitch_lower_limit = -1000
     
     def set_target_angle(self, target_angle):
         self.target_angle = target_angle
+    
+    def set_pitch_lower_limit(self, lower_limit):
+        self.pitch_lower_limit = lower_limit
         
     def is_detected(self, enemy_detected):
         self.enemy_detected = enemy_detected
@@ -24,6 +28,8 @@ class Target:
     # Heartbeat from CV to Control
     def call_heartBeat(self):
         while True:
+            if self.target_angle[1] <  self.pitch_lower_limit:
+                self.target_angle[1] =  self.pitch_lower_limit
             # print(self.target_angle[1])
             if self.enemy_detected:
                 self.CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=self.target_angle[1], gimbal_yaw_target=self.target_angle[2], chassis_speed_x=0, chassis_speed_y=0)

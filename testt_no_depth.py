@@ -46,6 +46,8 @@ def main():
 
     time.sleep(4)
 
+    enemy.set_pitch_lower_limit(cam.angles_min[1])
+    
     while True:
         frame = cam.frame
 
