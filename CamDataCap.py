@@ -34,12 +34,6 @@ class depth_camera:
         #Config color camera
         color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
         color.setFps(self.colorfps)
-        manip = self.pipeline.createImageManip()
-        # Vertical + Horizontal flip == rotate frame for 180°
-        manip.initialConfig.setVerticalFlip(True)
-        manip.initialConfig.setHorizontalFlip(True)
-        manip.setFrameType(dai.ImgFrame.Type.RAW16)
-        color.link(manip.inputImage)
 
         #Create LinkOut nodes
         xoutGrp = self.pipeline.create(dai.node.XLinkOut)
@@ -158,7 +152,7 @@ class depth_camera:
                         self.frame["disparity"] = (frame_get * self.disparityMultiplier).astype(np.uint8)
                         self.frame["disparity"]= cv2.applyColorMap(self.frame["disparity"], cv2.COLORMAP_JET)
                     else:
-                        self.frame["video"] = cv2.resize(frame_get, (960,540))[ 30:510, 160:800]
+                        self.frame["video"] = cv2.rotate(cv2.resize(frame_get, (960,540))[ 30:510, 160:800],cv2.ROTATE_90_CLOCKWISE)
 
                 #unpack IMU data
                 for imuPacket in imuPackets:

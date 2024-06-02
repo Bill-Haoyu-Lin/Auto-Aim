@@ -7,7 +7,7 @@ class Target:
         self.target_angle = [0, 0, 0]
         self.enemy_detected = False
         self.Global_xyz_filtered = [0, 0, 0]
-        self.CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyTHS0')
+        self.CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyTHS1')
         self.pitch_lower_limit = -1000
     
     def set_target_angle(self, target_angle):
