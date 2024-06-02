@@ -14,7 +14,7 @@ class CvCmdHandler:
     MIN_TX_SEPARATION_SEC = 0.002  # reserved for future, currently control board is fast enough
     MIN_INFO_REQ_SEPARATION_SEC = 0.002
     SHOOT_TIMEOUT_SEC = 0.002
-    DEBUG_CV = True
+    DEBUG_CV = False
 
     class eMsgType(Enum):
         MSG_MODE_CONTROL = b'\x10'

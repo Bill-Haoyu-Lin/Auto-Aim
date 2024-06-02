@@ -152,7 +152,7 @@ class depth_camera:
                         self.frame["disparity"] = (frame_get * self.disparityMultiplier).astype(np.uint8)
                         self.frame["disparity"]= cv2.applyColorMap(self.frame["disparity"], cv2.COLORMAP_JET)
                     else:
-                        self.frame["video"] = cv2.rotate(cv2.resize(frame_get, (960,540))[ 30:510, 160:800],cv2.ROTATE_90_CLOCKWISE)
+                        self.frame["video"] = cv2.rotate(cv2.resize(frame_get, (960,540))[ 30:510, 160:800],cv2.ROTATE_180)
 
                 #unpack IMU data
                 for imuPacket in imuPackets:
@@ -173,8 +173,7 @@ class depth_camera:
                     
                     if init_state:
                         self.angles_default = self.cur_angle
-                        self.angles_min = self.angles_default
-                        self.angles_min[2] = self.angles_min[2] - 0.18
+                        self.angles_min[2] = self.angles_default[2]-0.18
                         init_state = False
                 
                 config = dai.SpatialLocationCalculatorConfigData()    
