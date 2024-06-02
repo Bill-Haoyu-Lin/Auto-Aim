@@ -11,9 +11,9 @@ class CvCmdHandler:
     DATA_TIMESTAMP_INDEX = 2
     DATA_PACKAGE_SIZE = 21  # 2 bytes header, 1 byte msg type, 16 bytes payload
     DATA_PAYLOAD_INDEX = 5
-    MIN_TX_SEPARATION_SEC = 0.002  # reserved for future, currently control board is fast enough
-    MIN_INFO_REQ_SEPARATION_SEC = 0.002
-    SHOOT_TIMEOUT_SEC = 0.002
+    MIN_TX_SEPARATION_SEC = 0.002# reserved for future, currently control board is fast enough
+    MIN_INFO_REQ_SEPARATION_SEC = 2
+    SHOOT_TIMEOUT_SEC = 2
     DEBUG_CV = True
 
     class eMsgType(Enum):
