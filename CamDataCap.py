@@ -13,12 +13,12 @@ class depth_camera:
     calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.AVERAGE
     coordinates_3d = [0,0,0]
     angles_default = [0,0,0]
-    
+    angles_min =[0,0,0]
     colorfps = 60
     cur_angle = [0,0,0]
 
     def __init__(self):
-        angles_min =[0,0,0]
+        
         self.frame = {"video": None, "disparity": None}
         self.pipeline = dai.Pipeline()
 
@@ -34,6 +34,12 @@ class depth_camera:
         #Config color camera
         color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
         color.setFps(self.colorfps)
+        manip = self.pipeline.createImageManip()
+        # Vertical + Horizontal flip == rotate frame for 180°
+        manip.initialConfig.setVerticalFlip(True)
+        manip.initialConfig.setHorizontalFlip(True)
+        manip.setFrameType(dai.ImgFrame.Type.RAW16)
+        color.link(manip.inputImage)
 
         #Create LinkOut nodes
         xoutGrp = self.pipeline.create(dai.node.XLinkOut)
