@@ -32,9 +32,10 @@ class Target:
         while True:
             if self.target_angle[1] <  self.pitch_lower_limit:
                 self.target_angle[1] =  self.pitch_lower_limit
-            # print(self.target_angle[1])
+            print(self.target_angle[2])
             if self.enemy_detected:
                 self.CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=self.target_angle[1], gimbal_yaw_target=self.target_angle[2], chassis_speed_x=0, chassis_speed_y=0)
             else:
+                self.target_angle[2] += 0.04
                 self.CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=self.target_angle[1], gimbal_yaw_target=self.target_angle[2], chassis_speed_x=0, chassis_speed_y=0)
             time.sleep(1/500)

@@ -36,8 +36,8 @@ def main():
 
     Global_xyz_filtered = [0,0,0]
 
-    target_yaw_record = np.empty(70)
-    target_pitch_record = np.empty(70)
+    target_yaw_record = np.zeros(70)
+    target_pitch_record = np.zeros(70)
 
     thread2 = Thread(target = enemy.call_heartBeat,args=())
     thread2.start()
@@ -114,7 +114,7 @@ def main():
                         
                         if debug_mode:
                             start_time = time.time()  # Record the start time
-                            target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record[-60:],target_yaw_record[-60:])
+                            target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record,target_yaw_record)
                             end_time = time.time()  # Record the end time
                             elapsed_time = end_time - start_time 
                             print('filter time: ', elapsed_time)
@@ -127,9 +127,9 @@ def main():
                         # if z[0] >5:
                         #     target_yaw_record[-1] *= 1.5
 
-                        Global_xyz_filtered[2] = target_yaw_record[-1]-0.15
+                        Global_xyz_filtered[2] = target_yaw_record[-1]
                         # Global_xyz_filtered[2] = pred -0.1
-                        Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
+                        Global_xyz_filtered[1] = target_pitch_record[-1]+0.05
                         
                        # Initialize the EKF
                         ekf = EKF(dim_x=1, dim_z=2)
