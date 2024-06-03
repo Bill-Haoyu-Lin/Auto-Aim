@@ -1,7 +1,7 @@
 import CvCmdApi
 
 # Example usage
-CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyTHS0')
+CvCmder = CvCmdApi.CvCmdHandler('/dev/ttyTHS1')
 # oldflags = (False, False, False)
 # while True:
 #     flags = CvCmder.CvCmd_Heartbeat(0, 0, 0, 0)  # gimbal_coordinate_x, gimbal_coordinate_y, chassis_speed_x, chassis_speed_y

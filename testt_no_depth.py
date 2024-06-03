@@ -134,6 +134,8 @@ def main():
                         measurements = target_yaw_record[-10:]   # Example angle measurements in radians
                         dt = 1.0  # Time step
 
+
+                        Global_xyz_filtered = np.float32(Global_xyz_filtered)
                         enemy.set_target_angle(Global_xyz_filtered)
 
                         #print global location for debug
