@@ -14,6 +14,9 @@ from filterpy.kalman import ExtendedKalmanFilter as EKF
 from filterpy.common import Q_discrete_white_noise
 
 def main():
+
+    debug_mode = False
+
     model = YOLO("./models/best.pt")
 
     enemy = target.Target()
@@ -55,11 +58,14 @@ def main():
 
             if frame["video"].shape == (480,640,3):
 
-                start_time = time.time()  # Record the start time
-                results = model(frame["video"],verbose=False)[0]
-                end_time = time.time() 
-                elapsed_time = end_time - start_time 
-                print('filter time: ', elapsed_time)
+                if debug_mode:
+                    start_time = time.time()  # Record the start time
+                    results = model(frame["video"],verbose=False)[0]
+                    end_time = time.time() 
+                    elapsed_time = end_time - start_time 
+                    print('filter time: ', elapsed_time)
+                else:
+                    results = model(frame["video"],verbose=False)[0]
 
                 for result in results:
                     if result != None:
@@ -105,12 +111,15 @@ def main():
 
                         target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
                         target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
-
-                        start_time = time.time()  # Record the start time
-                        target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record[-60:],target_yaw_record[-60:])
-                        end_time = time.time()  # Record the end time
-                        elapsed_time = end_time - start_time 
-                        print('filter time: ', elapsed_time)
+                        
+                        if debug_mode:
+                            start_time = time.time()  # Record the start time
+                            target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record[-60:],target_yaw_record[-60:])
+                            end_time = time.time()  # Record the end time
+                            elapsed_time = end_time - start_time 
+                            print('filter time: ', elapsed_time)
+                        else:
+                            target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record[-60:],target_yaw_record[-60:])
                         # target_yaw_window = target_yaw_record[-10:]
                         # z = np.polyfit([0,1,2,3,4,5,6,7,8,9],target_yaw_window,3)
                         # pred = z[0]*10 + z[1]
