@@ -107,7 +107,7 @@ def main():
                         target_pitch_record = np.append(target_pitch_record,Global_xyz[1])
 
                         start_time = time.time()  # Record the start time
-                        target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record[-70:],target_yaw_record[-70:])
+                        target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record[-60:],target_yaw_record[-60:])
                         end_time = time.time()  # Record the end time
                         elapsed_time = end_time - start_time 
                         print('filter time: ', elapsed_time)
@@ -135,7 +135,7 @@ def main():
                         # Example measurements (angles from -pi to pi)
                         measurements = target_yaw_record[-10:]   # Example angle measurements in radians
                         dt = 1.0  # Time step
-
+                        Global_xyz_filtered = np.float32(Global_xyz_filtered)
                         enemy.set_target_angle(Global_xyz_filtered)
 
                         #print global location for debug
