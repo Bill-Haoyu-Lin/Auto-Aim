@@ -41,6 +41,19 @@ def main():
 
     yaw_record = np.zeros(1)
 
+    # Initialize the EKF
+    ekf = EKF(dim_x=2, dim_z=1)
+
+    # Initial state
+    ekf.x = np.array([0.0, 0.1])  # Starting with angle 0 and small angular velocity
+    ekf.F = np.eye(2)             # State transition matrix (will be updated)
+    ekf.R = np.array([[0.1]])     # Measurement noise covariance
+    ekf.Q = Q_discrete_white_noise(dim=2, dt=1, var=0.01)  # Process noise covariance
+    ekf.P *= 10                   # Initial state covariance
+    
+    #Time step for EKF, assume 0.1 for 100ms prediction
+    dt = 0.4
+
     thread2 = Thread(target = enemy.call_heartBeat,args=())
     thread2.start()
     print("heartbeat start")
@@ -99,7 +112,7 @@ def main():
 
                         frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
                         
-                        focal_length_in_pixel = 1980*0.55* 4.81 / 11.043412
+                        focal_length_in_pixel = 1980*0.65* 4.81 / 11.043412
                         focal_length_in_pixel_pitch =  1.5*1080 * 4.81 / 11.043412
                         
                         theta  = math.atan((center_x - 320)/focal_length_in_pixel)
@@ -131,36 +144,23 @@ def main():
                         else:
                             target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record,yaw_record)
                         
+                        # apply EKF
+                        ekf.F = CvHelper.jfx(ekf.x, dt)
+                        ekf.predict()
+                        ekf.update(np.array([yaw_record,cur_angle[2]]), HJacobian=CvHelper.jhx, Hx=CvHelper.hx)
+                        ekf.x[0] = CvHelper.normalize_angle(ekf.x[0])  # Normalize the angle
+                        
+                        # collect result for debug
                         theta_record.append(theta)
                         location_record.append(Global_xyz[2])
                         target_record.append(Global_xyz_filtered[2])
 
-
-                        # if z[0] >5:
-                        #     target_yaw_record[-1] *= 1.5
-
+                        # finalize the global location
                         Global_xyz_filtered[2] = CvHelper.wrap_angle(Global_xyz[2]+0.2)
                         Global_xyz_filtered[1] = target_pitch_record[-1]-0.03
-                        
-                    #    # Initialize the EKF
-                    #     ekf = EKF(dim_x=1, dim_z=2)
 
-                    #     # Initial state
-                    #     ekf.x = np.array([0.0])  # Starting angle
-                    #     ekf.F = np.array([[1]])  # State transition matrix
-                    #     ekf.R = np.array([[0.1]])  # Measurement noise covariance
-                    #     ekf.Q = Q_discrete_white_noise(dim=2, dt=1, var=0.05)  # Process noise covariance
-                    #     ekf.P *= 1000  # Initial state covariance
-
-                    #     # Example measurements (angles from -pi to pi)
-                    #     measurements = target_yaw_record[-10:]   # Example angle measurements in radians
-                    #     dt = 1.0  # Time step
-
-                        Global_xyz_filtered = np.float32(Global_xyz_filtered)
+                        # set target angle
                         enemy.set_target_angle(Global_xyz_filtered)
-
-                        #print global location for debug
-
                         
                         last = Global_xyz
                         

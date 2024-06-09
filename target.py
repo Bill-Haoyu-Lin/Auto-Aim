@@ -1,5 +1,8 @@
 import CvCmdApi
 import time
+import numpy as np
+
+
 
 class Target:
 
@@ -12,9 +15,10 @@ class Target:
         self.cam_started = False
         self.last_seen = -2
 
+
     def set_target_angle(self, target_angle):
+        self.target_angle = np.float32(target_angle)
         self.last_seen = time.time()
-        self.target_angle = target_angle
     
     def set_pitch_lower_limit(self, lower_limit):
         self.pitch_lower_limit = lower_limit
@@ -31,6 +35,7 @@ class Target:
 
     def get_enemy_detected(self):
         return self.enemy_detected
+    
 
     # Heartbeat from CV to Control
     def call_heartBeat(self):
