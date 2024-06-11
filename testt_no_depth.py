@@ -38,8 +38,18 @@ def main():
 
     target_yaw_record = np.zeros(1)
     target_pitch_record = np.zeros(1)
-
     yaw_record = np.zeros(1)
+
+        # Initialize the EKF
+    ekf = EKF(dim_x=2, dim_z=1)
+
+    # Initial state
+    ekf.x = np.array([0.0, 0.0])  # Starting with angle 0 and small angular velocity
+    ekf.F = np.eye(2)             # State transition matrix (will be updated)
+    ekf.R = np.array([[0.1]])     # Measurement noise covariance
+    ekf.Q = Q_discrete_white_noise(dim=2, dt=1, var=0.01)  # Process noise covariance
+    ekf.P *= 10                   # Initial state covariance
+
 
     thread2 = Thread(target = enemy.call_heartBeat,args=())
     thread2.start()
@@ -51,14 +61,22 @@ def main():
     detected = False
     time.sleep(4)
 
+
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for MP4 video
+    out = cv2.VideoWriter('output2.mp4', fourcc, 30.0, (640, 360))
+
+
     enemy.set_pitch_lower_limit(cam.angles_min[1])
     enemy.ack_start(True)
    
-
+    cur_time = time.time()
     while True:
         frame = cam.frame
-        #get current imu angle
+        out.write(frame["video"])
         
+        #get current imu angle
+        dt = time.time()-cur_time
+
         angle_rt= cam.cur_angle
         cur_angle = - np.array(angle_rt) + np.array(cam.angles_default)
         cur_angle[2] = CvHelper.wrap_angle(cur_angle[2])
@@ -99,21 +117,23 @@ def main():
 
                         frame["video"] = cv2.circle(frame["video"], (center_x,center_y), 10, (255, 0, 0) , 2)
                         
-                        focal_length_in_pixel = 1980*0.55* 4.81 / 11.043412
-                        focal_length_in_pixel_pitch =  1.5*1080 * 4.81 / 11.043412
+                        focal_length_in_pixel = 1980*0.65* 4.81 / 11.043412
+                        focal_length_in_pixel_pitch =  2.3*1080 * 4.81 / 11.043412
                         
                         theta  = math.atan((center_x - 320)/focal_length_in_pixel)
-                        phi = math.atan((center_y - 180)/focal_length_in_pixel_pitch)
+                        phi = -math.atan((center_y - 180)/focal_length_in_pixel_pitch)
                         print(theta)
-                        print(cur_angle[2])
+
+                        # print("angle 2",cur_angle[2])
+                        # print("angle 1",cur_angle[1])
 
                     
                         #roll pitch yaw
                         # Yaw clockwise +
-                        # Pitch down +
+                        # Pitch Up +
                         #print("theta is: =",theta)
                         Global_xyz[2]= cur_angle[2]+theta
-                        Global_xyz[1]= phi - cur_angle[1]
+                        Global_xyz[1]= cur_angle[1]+phi
 
                         target_yaw_record = np.append(target_yaw_record,Global_xyz[2])
                         yaw_record = np.append(yaw_record,Global_xyz[2])
@@ -135,27 +155,15 @@ def main():
                         location_record.append(Global_xyz[2])
                         target_record.append(Global_xyz_filtered[2])
 
+                        ekf.F = CvHelper.jfx(ekf.x, dt)
+                        ekf.predict()
+                        ekf.update(np.array(yaw_record[-1]), HJacobian=CvHelper.jhx, Hx=CvHelper.hx)
+                        ekf.x[0] = CvHelper.normalize_angle(ekf.x[0])  # Normalize the angle
 
-                        # if z[0] >5:
-                        #     target_yaw_record[-1] *= 1.5
-
-                        Global_xyz_filtered[2] = CvHelper.wrap_angle(Global_xyz[2]+0.2)
-                        Global_xyz_filtered[1] = target_pitch_record[-1]-0.03
+                        # Global_xyz_filtered[2] = CvHelper.wrap_angle(Global_xyz[2])
+                        Global_xyz_filtered[2] = ekf.x[0]
+                        Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
                         
-                    #    # Initialize the EKF
-                    #     ekf = EKF(dim_x=1, dim_z=2)
-
-                    #     # Initial state
-                    #     ekf.x = np.array([0.0])  # Starting angle
-                    #     ekf.F = np.array([[1]])  # State transition matrix
-                    #     ekf.R = np.array([[0.1]])  # Measurement noise covariance
-                    #     ekf.Q = Q_discrete_white_noise(dim=2, dt=1, var=0.05)  # Process noise covariance
-                    #     ekf.P *= 1000  # Initial state covariance
-
-                    #     # Example measurements (angles from -pi to pi)
-                    #     measurements = target_yaw_record[-10:]   # Example angle measurements in radians
-                    #     dt = 1.0  # Time step
-
                         Global_xyz_filtered = np.float32(Global_xyz_filtered)
                         enemy.set_target_angle(Global_xyz_filtered)
 
@@ -176,6 +184,7 @@ def main():
         if cv2.waitKey(1) == ord('q'):
             break
 
+        cur_time = time.time()
 
     length = len(angle_record)
     t = [(i + 1) / 100 for i in range(length)]

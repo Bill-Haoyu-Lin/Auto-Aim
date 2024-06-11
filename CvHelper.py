@@ -1,6 +1,7 @@
 import math
 import numpy as np
 from scipy import signal
+import numpy as np
 
 # Euler angles to quaternion
 def euler_from_quaternion(x, y, z, w):
@@ -99,6 +100,7 @@ def tramform2base(x,y,z,angles):
     #     yaw_final += math.pi
     # else:
     #     yaw_final -= math.pi
+    
     pitch_final = np.arctan2(z_final, np.sqrt(x_final**2 + y_final**2))
     roll_final = np.arctan2(np.sin(yaw)*z_final - np.cos(yaw)*y_final, np.cos(pitch)*x_final + np.sin(pitch)*y_final)
     # print([roll_final, pitch_final, yaw_final])
@@ -112,13 +114,45 @@ def tramform2base(x,y,z,angles):
 def ellip_filter(pitch_record, yaw_record):
 
     # Create a elliptic filter
-    b,a= signal.ellip(3, 0.04, 60, 0.125)
+    b,a= signal.ellip(3, 0.02, 120, 0.125)
 
     # Apply filter to data
-    yaw_record_filtered = signal.filtfilt(b, a, yaw_record, method="gust", irlen=70)
-    pitch_record_filtered = signal.filtfilt(b, a, pitch_record, method="gust", irlen=70)
+    yaw_record_filtered = signal.filtfilt(b, a, yaw_record, method="gust",irlen=50)
+    pitch_record_filtered = signal.filtfilt(b, a, pitch_record, method="gust",irlen=50)
 
     return [pitch_record_filtered[-1], yaw_record_filtered[-1]]
 
+def normalize_angle(x):
+    """
+    Normalize the angle to be within the range of -pi to pi.
+    """
+    return np.arctan2(np.sin(x), np.cos(x))
 
+def fx(x, dt):
+    """
+    State transition function for the EKF.
+    x[0] is the angle, x[1] is the angular velocity.
+    """
+    angle = normalize_angle(x[0] + x[1] * dt)
+    angular_velocity = x[1]
+    return np.array([angle, angular_velocity])
+
+def jfx(x, dt):
+    """
+    Jacobian of the state transition function.
+    """
+    return np.array([[1, dt], [0, 1]])
+
+def hx(x):
+    """
+    Measurement function.
+    Only the angle is measured.
+    """
+    return np.array([x[0]])
+
+def jhx(x):
+    """
+    Jacobian of the measurement function.
+    """
+    return np.array([[1, 0]])
 
