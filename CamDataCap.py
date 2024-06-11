@@ -5,7 +5,6 @@ import cv2
 import CvHelper   
 
 class depth_camera:
-
     
     topLeft = dai.Point2f(0.45, 0.45)
     bottomRight = dai.Point2f(0.55, 0.55)

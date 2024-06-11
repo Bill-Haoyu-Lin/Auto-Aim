@@ -1,8 +1,6 @@
 import CvCmdApi
 import time
-import numpy as np
-
-
+import CvHelper
 
 class Target:
 
@@ -15,10 +13,9 @@ class Target:
         self.cam_started = False
         self.last_seen = -2
 
-
     def set_target_angle(self, target_angle):
-        self.target_angle = np.float32(target_angle)
         self.last_seen = time.time()
+        self.target_angle = target_angle
     
     def set_pitch_lower_limit(self, lower_limit):
         self.pitch_lower_limit = lower_limit
@@ -35,7 +32,6 @@ class Target:
 
     def get_enemy_detected(self):
         return self.enemy_detected
-    
 
     # Heartbeat from CV to Control
     def call_heartBeat(self):
@@ -47,10 +43,12 @@ class Target:
 
             if self.enemy_detected:
                 self.CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=self.target_angle[1], gimbal_yaw_target=self.target_angle[2], chassis_speed_x=0, chassis_speed_y=0)
+                # self.CvCmder.CvCmd_Shoot()
             else:
                 if self.cam_started and ((time.time()-self.last_seen) >=1.5):
                     # print("search target")
                     self.target_angle[2] += 0.003
-                    self.target_angle[1] = 0
+                    self.target_angle[1] = -0.2
+
                 self.CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=self.target_angle[1], gimbal_yaw_target=self.target_angle[2], chassis_speed_x=0, chassis_speed_y=0)
             time.sleep(1/400)

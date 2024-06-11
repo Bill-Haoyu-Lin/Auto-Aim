@@ -62,18 +62,12 @@ def main():
     time.sleep(4)
 
 
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for MP4 video
-    out = cv2.VideoWriter('output2.mp4', fourcc, 30.0, (640, 360))
-
-
     enemy.set_pitch_lower_limit(cam.angles_min[1])
     enemy.ack_start(True)
    
     cur_time = time.time()
     while True:
         frame = cam.frame
-        out.write(frame["video"])
-        
         #get current imu angle
         dt = time.time()-cur_time
 
