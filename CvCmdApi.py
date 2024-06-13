@@ -120,6 +120,8 @@ class CvCmdHandler:
         self.time_remain = 0
         self.current_HP = 0
         self.game_progress = 0
+
+        self.teamColor = self.eTeamColor.TEAM_COLOR_BLUE.value
         self.shootStartTime = 0
         try:
             self.ser.reset_input_buffer()
