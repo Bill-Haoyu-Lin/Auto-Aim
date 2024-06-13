@@ -101,8 +101,7 @@ def main():
                        
 
 
-                        detected = True
-                        enemy.is_detected(detected)
+
 
                         angle_record.append(cur_angle[2])
 
@@ -111,6 +110,12 @@ def main():
                         center_x = int((boxes_xy[0]+boxes_xy[2])/2)
                         center_y = int((boxes_xy[1]+boxes_xy[3])/2)
                         
+                        if enemy.is_enemy(frame["video"][boxes_xy[0]:boxes_xy[2],boxes_xy[1]:boxes_xy[3]]):
+                            detected = True  
+                        else:
+                            detected = False
+                            
+                        enemy.is_detected(detected)
                         # print(center_x, center_y)
                         # topLeft = dai.Point2f(((4*(center_x-7))/4056), ((((center_y-7)+30)*4+220)/3040))# (960,540))[ 30:510, 160:800]
                         # bottomRight = dai.Point2f(((4*(center_x+7))/4056),((((center_y+7)+30)*4+220)/3040))
