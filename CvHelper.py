@@ -2,7 +2,6 @@ import math
 import numpy as np
 from scipy import signal
 import numpy as np
-import cv2
 
 # Euler angles to quaternion
 def euler_from_quaternion(x, y, z, w):
@@ -157,27 +156,4 @@ def jhx(x):
     """
     return np.array([[1, 0]])
 
-def is_red(crop):
-    crop=cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
 
-    # Define color ranges for red and blue
-    lower_red = np.array([0, 120, 70])
-    upper_red = np.array([10, 255, 255])
-
-    lower_blue = np.array([100, 120, 70])
-    upper_blue = np.array([130, 255, 255])
-
-    # Create masks for each color range
-    red_mask = cv2.inRange(crop, lower_red, upper_red)
-    blue_mask = cv2.inRange(crop, lower_blue, upper_blue)
-
-    # Count the number of pixels for each color
-    red_pixels = cv2.countNonZero(red_mask)
-    blue_pixels = cv2.countNonZero(blue_mask)
-
-    # Determine the dominant color
-    if red_pixels > blue_pixels:
-        return True
-    elif blue_pixels > red_pixels:
-        return False
- 

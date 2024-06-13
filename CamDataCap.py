@@ -5,7 +5,6 @@ import cv2
 import CvHelper   
 
 class depth_camera:
-
     
     topLeft = dai.Point2f(0.45, 0.45)
     bottomRight = dai.Point2f(0.55, 0.55)
@@ -32,6 +31,7 @@ class depth_camera:
         color = self.pipeline.create(dai.node.ColorCamera)
         #Config color camera
         color.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+
         color.setImageOrientation(dai.CameraImageOrientation.ROTATE_180_DEG)
         color.setVideoSize(1920, 1080)
         # color.setFps(self.colorfps)
@@ -116,6 +116,7 @@ class depth_camera:
         
 
         #setting up sync timeout
+
         sync.setSyncThreshold(timedelta(milliseconds=5))
         sync.setSyncAttempts(-1)
 
@@ -134,6 +135,7 @@ class depth_camera:
         with dai.Device(self.pipeline) as device:
 
             init_state = True
+
             queue = device.getOutputQueue("xout", 2, False)
             
             baseTs = None
@@ -151,7 +153,6 @@ class depth_camera:
                 imuData = msgGrp['imu']
                 colorData = msgGrp['video']
 
-                #unpack RGB data
 
                 if self.depth_on:
                     #Get depth data
@@ -179,6 +180,7 @@ class depth_camera:
 
 
                 frame_get = colorData.getCvFrame()
+
                 self.frame["video"] = cv2.resize(frame_get, (640,360))
 
                 if self.depth_on:
@@ -195,7 +197,6 @@ class depth_camera:
                 # tsF  = "{:.03f}"
 
                 #i : yaw, j : roll, k : pitch
-    
                 self.cur_angle = CvHelper.euler_from_quaternion(latestRotVec.i,latestRotVec.j,latestRotVec.k,latestRotVec.real)
                     
                 if init_state:
