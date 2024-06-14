@@ -37,7 +37,7 @@ class Target:
 
     def is_enemy(self,crop):
         crop=cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        target = 0
+        Target = 0
 
         # Define color ranges for red and blue
         lower_red = np.array([0, 120, 70])
