@@ -106,7 +106,7 @@ def main():
                         center_x = int((boxes_xy[0]+boxes_xy[2])/2)
                         center_y = int((boxes_xy[1]+boxes_xy[3])/2)
                         
-                        if enemy.is_enemy(frame["video"][boxes_xy[0]:boxes_xy[2],boxes_xy[1]:boxes_xy[3]]):
+                        if enemy.is_enemy(frame["video"][int(boxes_xy[0]):int(boxes_xy[2]),int(boxes_xy[1]):int(boxes_xy[3])]):
                             detected = True  
                         else:
                             detected = False
