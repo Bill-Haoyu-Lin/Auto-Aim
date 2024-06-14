@@ -74,12 +74,12 @@ class Target:
 
             if self.enemy_detected:
                 self.CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=self.target_angle[1], gimbal_yaw_target=self.target_angle[2], chassis_speed_x=0, chassis_speed_y=0)
-                # self.CvCmder.CvCmd_Shoot()
+                self.CvCmder.CvCmd_Shoot()
             else:
                 if self.cam_started and ((time.time()-self.last_seen) >=1.5):
                     # print("search target")
-                    self.target_angle[2] += 0.003
-                    self.target_angle[1] = -0.2
+                    self.target_angle[2] += 0.004
+                    self.target_angle[1] = 0.3
 
                 self.CvCmder.CvCmd_Heartbeat(gimbal_pitch_target=self.target_angle[1], gimbal_yaw_target=self.target_angle[2], chassis_speed_x=0, chassis_speed_y=0)
             

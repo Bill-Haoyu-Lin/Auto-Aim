@@ -99,10 +99,6 @@ def main():
                 for result in results:
                     if result != None:
                        
-
-
-
-
                         angle_record.append(cur_angle[2])
 
                         boxes_xy = result.boxes.xyxy[0]
@@ -147,15 +143,6 @@ def main():
 
                         # print(target_yaw_record[-1])
                         
-                        if debug_mode:
-                            start_time = time.time()  # Record the start time
-                            target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record,yaw_record)
-                            end_time = time.time()  # Record the end time
-                            elapsed_time = end_time - start_time 
-                            print('filter time: ', elapsed_time)
-                        else:
-                            target_pitch_record[-1], target_yaw_record[-1]= CvHelper.ellip_filter(target_pitch_record,yaw_record)
-                        
                         theta_record.append(theta)
                         location_record.append(Global_xyz[2])
                         target_record.append(Global_xyz_filtered[2])
@@ -167,7 +154,7 @@ def main():
 
                         # Global_xyz_filtered[2] = CvHelper.wrap_angle(Global_xyz[2])
                         Global_xyz_filtered[2] = ekf.x[0]
-                        Global_xyz_filtered[1] = target_pitch_record[-1]-0.1
+                        Global_xyz_filtered[1] = target_pitch_record[-1]+0.1
                         
                         Global_xyz_filtered = np.float32(Global_xyz_filtered)
                         enemy.set_target_angle(Global_xyz_filtered)
