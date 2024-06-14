@@ -36,32 +36,33 @@ class Target:
         return self.enemy_detected
 
     def is_enemy(self,crop):
-        crop=cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        Target = 0
+        if crop is not None:
+            crop=cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+            Target = 0
 
-        # Define color ranges for red and blue
-        lower_red = np.array([0, 120, 70])
-        upper_red = np.array([10, 255, 255])
+            # Define color ranges for red and blue
+            lower_red = np.array([0, 120, 70])
+            upper_red = np.array([10, 255, 255])
 
-        lower_blue = np.array([100, 120, 70])
-        upper_blue = np.array([130, 255, 255])
+            lower_blue = np.array([100, 120, 70])
+            upper_blue = np.array([130, 255, 255])
 
-        # Create masks for each color range
-        red_mask = cv2.inRange(crop, lower_red, upper_red)
-        blue_mask = cv2.inRange(crop, lower_blue, upper_blue)
+            # Create masks for each color range
+            red_mask = cv2.inRange(crop, lower_red, upper_red)
+            blue_mask = cv2.inRange(crop, lower_blue, upper_blue)
 
-        # Count the number of pixels for each color
-        red_pixels = cv2.countNonZero(red_mask)
-        blue_pixels = cv2.countNonZero(blue_mask)
+            # Count the number of pixels for each color
+            red_pixels = cv2.countNonZero(red_mask)
+            blue_pixels = cv2.countNonZero(blue_mask)
 
-        # Determine the dominant color
-        if red_pixels > blue_pixels:
-            Target = 1   # Red
-        elif blue_pixels > red_pixels:
-            Target = 0   # Blue
+            # Determine the dominant color
+            if red_pixels > blue_pixels:
+                Target = 1   # Red
+            elif blue_pixels > red_pixels:
+                Target = 0   # Blue
 
-        if Target != self.color:
-            return True
+            if Target != self.color:
+                return True
     
 
     # Heartbeat from CV to Control
