@@ -37,7 +37,7 @@ class Target:
 
     def is_enemy(self,crop):
         if crop is not None:
-            crop=cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+            crop_HSV=cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
             Target = 0
 
             # Define color ranges for red and blue
@@ -48,8 +48,8 @@ class Target:
             upper_blue = np.array([130, 255, 255])
 
             # Create masks for each color range
-            red_mask = cv2.inRange(crop, lower_red, upper_red)
-            blue_mask = cv2.inRange(crop, lower_blue, upper_blue)
+            red_mask = cv2.inRange(crop_HSV, lower_red, upper_red)
+            blue_mask = cv2.inRange(crop_HSV, lower_blue, upper_blue)
 
             # Count the number of pixels for each color
             red_pixels = cv2.countNonZero(red_mask)
