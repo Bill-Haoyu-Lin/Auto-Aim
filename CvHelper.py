@@ -69,7 +69,7 @@ def spherical_to_cartesian(r, phi, theta):
 # Wrap angle to range -pi to pi
 def wrap_angle(angle):
     # Wrap angle to range -pi to pi
-    return (angle + np.pi) % (2 * np.pi) - np.pi
+    return (angle + 2*np.pi) % (4 * np.pi) - 2*np.pi
 
 # Transform 3D coordinates from camera frame to base frame
 def tramform2base(x,y,z,angles):
